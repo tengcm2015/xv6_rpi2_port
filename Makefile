@@ -5,9 +5,9 @@
 #	A makefile script for generation of raspberry pi kernel images.
 ###############################################################################
 
-# The toolchain to use. arm-none-eabi works, but there does exist 
+# The toolchain to use. arm-none-eabi works, but there does exist
 # arm-bcm2708-linux-gnueabi.
-#ARMGNU ?= arm-none-eabi
+ARMGNU ?= arm-none-eabi
 
 # The intermediate directory for compiled object files.
 BUILD = build/
@@ -30,12 +30,23 @@ LINKER = kernel.ld
 # The names of libraries to use.
 LIBRARIES := csud
 
-#CFLAGS := -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -Werror -fno-omit-frame-pointer -nostdinc -nostdlib -fno-stack-protector
-CFLAGS := -fno-pic -static -Wno-packed-bitfield-compat -fno-builtin -fno-strict-aliasing -fshort-wchar -O2 -Wall -MD -ggdb -Werror -fno-omit-frame-pointer -fno-stack-protector -Wa,-march=armv6 -Wa,-mcpu=arm1176jzf-s -I include
+# CFLAGS := -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD
+# CFLAGS += -ggdb -Werror -fno-omit-frame-pointer -nostdinc -nostdlib
+# CFLAGS += -fno-stack-protector
+CFLAGS := -mfloat-abi=hard -fno-pic -static -Wno-packed-bitfield-compat
+CFLAGS += -fno-builtin -fno-strict-aliasing -fshort-wchar -O2 -Wall -MD
+CFLAGS += -ggdb -Werror -fno-omit-frame-pointer -fno-stack-protector
+CFLAGS += -Wa,-march=armv6 -Wa,-mcpu=arm1176jzf-s -fno-short-enums
+# -fno-short-enums: stops error msg
+# uses variable-size enums yet the output is to use 32-bit enums;
+# use of enum values across objects may fail
+#
 
-CC := gcc
+CFLAGS += -I include
 
-# The names of all object files that must be generated. Deduced from the 
+CC := $(ARMGNU)-gcc
+
+# The names of all object files that must be generated. Deduced from the
 # assembly code files in source.
 OBJECTS := $(patsubst $(SOURCE)%.s,$(BUILD)%.o,$(wildcard $(SOURCE)*.s))
 
@@ -53,7 +64,7 @@ $(LIST) : $(BUILD)output.elf
 
 # Rule to make the image file.
 $(TARGET) : $(BUILD)output.elf
-	$(ARMGNU)-objcopy $(BUILD)output.elf -O binary $(TARGET) 
+	$(ARMGNU)-objcopy $(BUILD)output.elf -O binary $(TARGET)
 
 # Rule to make the elf file.
 $(BUILD)output.elf : $(OBJECTS) $(C_OBJS) $(LINKER)
@@ -70,7 +81,7 @@ $(BUILD):
 	mkdir $@
 
 # Rule to clean files.
-clean : 
+clean :
 	-rm -rf $(BUILD)
 	-rm -f $(TARGET)
 	-rm -f $(LIST)
