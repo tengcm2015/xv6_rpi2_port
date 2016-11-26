@@ -8,6 +8,8 @@
 #ifndef MEMLAYOUT_H
 #define MEMLAYOUT_H
 
+#include "rpi_base.h"
+
 // Memory layout
 
 #define EXTMEM          0x8000          /* start of kernel code */
@@ -22,8 +24,7 @@
 #define GPUMEMSIZE      (1024*MBYTE)
 
 #define PA_START        0x0
-#define PHYSIO          0x20000000
-// #define PHYSIO          0x3F000000
+#define PHYSIO          PERIPHERAL_BASE
 #define RAMSIZE         0xC000000
 #define IOSIZE          (16*MBYTE)
 #define TVSIZE          0x1000

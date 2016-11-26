@@ -3,7 +3,7 @@
 
 #include "rpi_base.h"
 
-#define AUX_BASE ( PERIPHERAL_BASE + 0x215000 )
+#define AUX_BASE ( DEVSPACE + 0x215000 )
 
 #define AUX_ENA_MINIUART            ( 1 << 0 )
 #define AUX_ENA_SPI1                ( 1 << 1 )

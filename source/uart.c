@@ -21,6 +21,39 @@
 static rpi_gpio_t* rpiGpio = (rpi_gpio_t*)RPI_GPIO_BASE;
 static aux_t* auxillary = (aux_t*)AUX_BASE;
 
+// this has to be outside ... why ...
+volatile unsigned int tim;
+
+void
+led_flash_no_map(void)
+{
+    static rpi_gpio_t* rpiGpio_noMap = (rpi_gpio_t*)(PHYSIO + 0x200000);
+    rpiGpio_noMap->LED_GPFSEL |= LED_GPFBIT;
+
+    while(1)
+    {
+        for(tim = 0; tim < 500000; tim++)
+            ;
+        LED_ON(rpiGpio_noMap);
+        for(tim = 0; tim < 500000; tim++)
+            ;
+        LED_OFF(rpiGpio_noMap);
+    }
+}
+
+// flash LED with interval microsec * 2
+void
+led_flash(int interval)
+{
+    while(1)
+    {
+        delay(interval);
+        LED_ON(rpiGpio);
+        delay(interval);
+        LED_OFF(rpiGpio);
+    }
+}
+
 void
 RPI_SetGpioHi( rpi_gpio_pin_t gpio )
 {

@@ -3,7 +3,25 @@
 
 #include "rpi_base.h"
 
-#define RPI_GPIO_BASE ( PERIPHERAL_BASE + 0x200000 )
+#define RPI_GPIO_BASE ( DEVSPACE + 0x200000 )
+
+#if defined( RPIBPLUS ) || defined( RPI2 )
+    #define LED_GPFSEL      GPFSEL4
+    #define LED_GPFBIT      ( 1 << 21 )
+    #define LED_GPSET       GPSET1
+    #define LED_GPCLR       GPCLR1
+    #define LED_GPIO_BIT    ( 1 << 15 )
+    #define LED_ON(gpio)    do { gpio->LED_GPCLR = LED_GPIO_BIT; } while( 0 )
+    #define LED_OFF(gpio)   do { gpio->LED_GPSET = LED_GPIO_BIT; } while( 0 )
+#else
+    #define LED_GPFSEL      GPFSEL1
+    #define LED_GPFBIT      ( 1 << 18 )
+    #define LED_GPSET       GPSET0
+    #define LED_GPCLR       GPCLR0
+    #define LED_GPIO_BIT    ( 1 << 16 )
+    #define LED_ON(gpio)    do { gpio->LED_GPSET = LED_GPIO_BIT; } while( 0 )
+    #define LED_OFF(gpio)   do { gpio->LED_GPCLR = LED_GPIO_BIT; } while( 0 )
+#endif
 
 typedef enum {
     FS_INPUT = 0,

@@ -202,6 +202,8 @@ void            miniuartintr(void);
 void            uartputc(uint);
 void            setgpiofunc(uint, uint);
 void            setgpioval(uint, uint);
+void            led_flash(int);
+void            led_flash_no_map(void);
 
 // vm.c
 void            seginit(void);
