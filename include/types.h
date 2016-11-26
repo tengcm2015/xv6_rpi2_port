@@ -5,6 +5,8 @@
 *
 ********************************************************************/
 
+#ifndef TYPES_H
+#define TYPES_H
 
 typedef unsigned int u32;
 typedef unsigned short u16;
@@ -14,11 +16,12 @@ typedef unsigned long long u64;
 typedef unsigned int   uint;
 typedef unsigned short ushort;
 typedef unsigned char  uchar;
+
 typedef uint pde_t;
 typedef uint pte_t;
 
 
-/* trap vectors layout at virtual 
+/* trap vectors layout at virtual
 address HVECTORS (and KZERO(0x80000000), doubled mapped).*/
 typedef struct Vpage0 {
         void    (*vectors[8])(void);
@@ -51,3 +54,5 @@ struct framebufdescription {
 };
 
 typedef struct framebufdescription FBI;
+
+#endif

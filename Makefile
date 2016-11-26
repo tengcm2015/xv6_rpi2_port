@@ -33,10 +33,12 @@ LIBRARIES := csud
 # CFLAGS := -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD
 # CFLAGS += -ggdb -Werror -fno-omit-frame-pointer -nostdinc -nostdlib
 # CFLAGS += -fno-stack-protector
-CFLAGS := -mfloat-abi=hard -fno-pic -static -Wno-packed-bitfield-compat
+CFLAGS := -fno-pic -static -Wno-packed-bitfield-compat
+CFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
+# CFLAGS += -mfpu=neon-vfpv4 -mfloat-abi=hard -march=armv7-a -mtune=cortex-a7
 CFLAGS += -fno-builtin -fno-strict-aliasing -fshort-wchar -O2 -Wall -MD
 CFLAGS += -ggdb -Werror -fno-omit-frame-pointer -fno-stack-protector
-CFLAGS += -Wa,-march=armv6 -Wa,-mcpu=arm1176jzf-s -fno-short-enums
+CFLAGS += -fno-short-enums
 # -fno-short-enums: stops error msg
 # uses variable-size enums yet the output is to use 32-bit enums;
 # use of enum values across objects may fail
@@ -67,8 +69,12 @@ $(TARGET) : $(BUILD)output.elf
 	$(ARMGNU)-objcopy $(BUILD)output.elf -O binary $(TARGET)
 
 # Rule to make the elf file.
+# LIBOPTS := -L"/opt/local/arm-none-eabi/lib/" -lc
+# this is for undefined reference to `__aeabi_idiv' error
+LIBOPTS := -L"/opt/local/lib/gcc/arm-none-eabi/5.1.0/" -lgcc
+LIBOPTS += -L. $(patsubst %,-l %,$(LIBRARIES))
 $(BUILD)output.elf : $(OBJECTS) $(C_OBJS) $(LINKER)
-	$(ARMGNU)-ld --no-undefined $(OBJECTS) $(C_OBJS) -L. $(patsubst %,-l %,$(LIBRARIES)) -Map $(MAP) -o $(BUILD)output.elf -T $(LINKER)
+	$(ARMGNU)-ld --no-undefined $(OBJECTS) $(C_OBJS) $(LIBOPTS) -Map $(MAP) -o $(BUILD)output.elf -T $(LINKER)
 
 # Rule to make the object files.
 $(BUILD)%.o: $(SOURCE)%.s $(BUILD)
