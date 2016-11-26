@@ -16,6 +16,10 @@ typedef enum {
     FS_ALT3,
 } rpi_gpio_alt_function_t;
 
+/* A mask to be able to clear the bits in the register before setting the
+   value we require */
+#define FS_MASK     (7)
+
 typedef enum {
     RPI_GPIO0 = 0,
     RPI_GPIO1,
@@ -116,5 +120,13 @@ typedef struct {
     rpi_reg_wo_t    GPPUDCLK1;
     rpi_reg_ro_t    Reserved11;
 } rpi_gpio_t;
+
+typedef enum {
+    RPI_IO_LO = 0,
+    RPI_IO_HI,
+    RPI_IO_ON,
+    RPI_IO_OFF,
+    RPI_IO_UNKNOWN,
+} rpi_gpio_value_t;
 
 #endif
