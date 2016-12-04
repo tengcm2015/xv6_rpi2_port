@@ -8,7 +8,7 @@
 .section .init
 .globl _start
 _start:
-
+b led_flash_no_map
 b entry  /* branch to the actual entry code */
 
 .section .data
@@ -43,7 +43,7 @@ orr r1, #0x00000040 /* PSR_DISABLE_FIQ */
 orr r1, #0x00000013 /* PSR_MODE_SVC */
 msr cpsr, r1
 
-mov sp, #0x3000 
+mov sp, #0x3000
 bl mmuinit0
 
 /* switch SP and PC into KZERO space */
@@ -100,5 +100,3 @@ getsystemtime:
 	ldr r0, =0xFE003004 /* addr of the time-stamp lower 32 bits */
 	ldrd r0, r1, [r0]
 	bx lr
-
-

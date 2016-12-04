@@ -21,12 +21,11 @@
 static rpi_gpio_t* rpiGpio = (rpi_gpio_t*)RPI_GPIO_BASE;
 static aux_t* auxillary = (aux_t*)AUX_BASE;
 
-// this has to be outside ... why ...
-volatile unsigned int tim;
-
+void led_flash_no_map(void) __attribute__((naked));
 void
 led_flash_no_map(void)
 {
+    volatile unsigned int tim;
     static rpi_gpio_t* rpiGpio_noMap = (rpi_gpio_t*)(PHYSIO + 0x200000);
     rpiGpio_noMap->LED_GPFSEL |= LED_GPFBIT;
 
@@ -186,6 +185,11 @@ miniuartintr(void)
 void
 uartinit(int baud)
 {
+    /* Write 1 to the LED init nibble in the Function Select GPIO
+       peripheral register to enable LED pin as an output */
+    // rpiGpio->LED_GPFSEL |= LED_GPFBIT;
+	// led_flash(500000); // debug
+
 	auxillary->ENABLES = 1;
 	auxillary->MU_CNTL = 0;
 	auxillary->MU_LCR  = AUX_MULCR_8BIT_MODE;
