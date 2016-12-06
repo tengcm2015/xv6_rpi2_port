@@ -21,6 +21,7 @@
 static rpi_gpio_t* rpiGpio = (rpi_gpio_t*)RPI_GPIO_BASE;
 static aux_t* auxillary = (aux_t*)AUX_BASE;
 
+// set naked to avoid messing up stack
 void led_flash_no_map(void) __attribute__((naked));
 void
 led_flash_no_map(void)
@@ -40,11 +41,11 @@ led_flash_no_map(void)
     }
 }
 
-// flash LED with interval microsec * 2
+// flash LED with interval microsec * 2 for recur times
 void
-led_flash(int interval)
+led_flash(int interval, int recur)
 {
-    while(1)
+    for(int i = 0; i < recur; i++)
     {
         delay(interval);
         LED_ON(rpiGpio);
@@ -185,10 +186,10 @@ miniuartintr(void)
 void
 uartinit(int baud)
 {
-    /* Write 1 to the LED init nibble in the Function Select GPIO
-       peripheral register to enable LED pin as an output */
-    // rpiGpio->LED_GPFSEL |= LED_GPFBIT;
-	// led_flash(500000); // debug
+	/* Write 1 to the LED init nibble in the Function Select GPIO
+		peripheral register to enable LED pin as an output */
+	rpiGpio->LED_GPFSEL |= LED_GPFBIT;
+	led_flash(500000, 5); // debug
 
 	auxillary->ENABLES = 1;
 	auxillary->MU_CNTL = 0;

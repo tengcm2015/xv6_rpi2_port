@@ -8,7 +8,6 @@
 .section .init
 .globl _start
 _start:
-b led_flash_no_map
 b entry  /* branch to the actual entry code */
 
 .section .data
@@ -28,7 +27,7 @@ _binary_initcode_end:
 .align 4
 .global _binary_fs_img_start
 _binary_fs_img_start:
-        .incbin "fs.img"
+	.incbin "fs.img"
 .global _binary_fs_img_end
 _binary_fs_img_end:
 
