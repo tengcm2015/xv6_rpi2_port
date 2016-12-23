@@ -5,10 +5,10 @@
 *
 ********************************************************************/
 
+#ifndef ARM_INCLUDE
+#define ARM_INCLUDE
 
-
-
-#define PSR_MODE_USR		0x00000010 
+#define PSR_MODE_USR		0x00000010
 #define PSR_MODE_FIQ		0x00000011
 #define PSR_MODE_IRQ		0x00000012
 #define PSR_MODE_SVC		0x00000013
@@ -19,6 +19,7 @@
 #define PSR_MASK		0x0000001F
 #define USER_MODE		0x0
 
+#define NO_INT      0xc0
 #define PSR_DISABLE_IRQ		0x00000080
 #define PSR_DISABLE_FIQ		0x00000040
 
@@ -27,6 +28,7 @@
 #define PSR_Z			0x40000000
 #define PSR_N			0x80000000
 
+#ifndef __ASSEMBLER__
 
 static inline uint
 inw(uint addr)
@@ -49,7 +51,7 @@ outw(uint addr, uint data)
 struct trapframe {
   uint sp; // user mode sp
   uint r0;
-  uint r1; 
+  uint r1;
   uint r2;
   uint r3;
   uint r4;
@@ -70,3 +72,6 @@ struct trapframe {
   uint pc; // return address of the interrupted code
 };
 
+#endif
+
+#endif

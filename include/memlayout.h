@@ -11,9 +11,12 @@
 #include "rpi_base.h"
 
 // Memory layout
+// we first map 1MB low memory containing kernel code.
+#define INIT_KERN_SZ    0x00100000
+#define DEV_MEM_SZ      0x01000000
 
-#define EXTMEM          0x8000          /* start of kernel code */
-#define PHYSTOP         0xC000000       /* assuming 128M RAM; need a fix to find the true RAM size */
+#define EXTMEM          0x00000000      /* start of kernel code */
+#define PHYSTOP         0x0C000000      /* assuming 128M RAM; need a fix to find the true RAM size */
 #define DEVSPACE        0xFE000000      /* i/o registers */
 
 // Key addresses for address space layout (see kmap in vm.c for layout)
@@ -25,9 +28,11 @@
 
 #define PA_START        0x0
 #define PHYSIO          PERIPHERAL_BASE
-#define RAMSIZE         0xC000000
+#define RAMSIZE         0x0C000000
 #define IOSIZE          (16*MBYTE)
-#define TVSIZE          0x1000
+#define TVSIZE          0x00001000
+
+#ifndef __ASSEMBLER__
 
 static inline uint v2p(void *a) { return ((uint) (a))  - KERNBASE; }
 static inline void *p2v(uint a) { return (void *) ((a) + KERNBASE); }
@@ -35,7 +40,9 @@ static inline void *p2v(uint a) { return (void *) ((a) + KERNBASE); }
 #define V2P(a) (((uint) (a)) - KERNBASE)
 #define P2V(a) (((void *) (a)) + KERNBASE)
 
+#endif
+
 #define V2P_WO(x) ((x) - KERNBASE)    // same as V2P, but without casts
-#define P2V_WO(x) ((x) + KERNBASE)    // same as V2P, but without casts
+#define P2V_WO(x) ((x) + KERNBASE)    // same as P2V, but without casts
 
 #endif

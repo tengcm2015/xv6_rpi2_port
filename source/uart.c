@@ -21,23 +21,23 @@
 static rpi_gpio_t* rpiGpio = (rpi_gpio_t*)RPI_GPIO_BASE;
 static aux_t* auxillary = (aux_t*)AUX_BASE;
 
-// set naked to avoid messing up stack
-void led_flash_no_map(void) __attribute__((naked));
+// flash LED with no absolute addr
 void
-led_flash_no_map(void)
+led_flash_no_map(int interval, int recur)
 {
     volatile unsigned int tim;
-    static rpi_gpio_t* rpiGpio_noMap = (rpi_gpio_t*)(PHYSIO + 0x200000);
-    rpiGpio_noMap->LED_GPFSEL |= LED_GPFBIT;
+    volatile unsigned int* gpio = (unsigned int*)(PHYSIO + 0x200000);
 
-    while(1)
+    for (int i = 0; i < recur; i++)
     {
-        for(tim = 0; tim < 500000; tim++)
+        for(tim = 0; tim < interval; tim++)
             ;
-        LED_ON(rpiGpio_noMap);
-        for(tim = 0; tim < 500000; tim++)
+        gpio[11] = (1 << 15);
+
+        for(tim = 0; tim < interval; tim++)
             ;
-        LED_OFF(rpiGpio_noMap);
+        gpio[8] = (1 << 15);
+
     }
 }
 
@@ -188,7 +188,7 @@ uartinit(int baud)
 {
 	/* Write 1 to the LED init nibble in the Function Select GPIO
 		peripheral register to enable LED pin as an output */
-	rpiGpio->LED_GPFSEL |= LED_GPFBIT;
+	// rpiGpio->LED_GPFSEL |= LED_GPFBIT;
 	led_flash(500000, 5); // debug
 
 	auxillary->ENABLES = 1;

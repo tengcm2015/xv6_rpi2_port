@@ -1,62 +1,30 @@
-/*****************************************************************
-*	entry.s
-*	by Zhiyi Huang, hzy@cs.otago.ac.nz
-*	University of Otago
-*
-********************************************************************/
+#include "arm.h"
+#include "memlayout.h"
 
-.section .init
-.globl _start
+.global _start
 _start:
-b entry  /* branch to the actual entry code */
+@ initialize stack pointers for svc modes
+	MSR     CPSR_cxsf, #(PSR_MODE_SVC|NO_INT)
+	LDR     sp, =V2P_WO(svc_stktop)
 
-.section .data
+	MRC     p15, 0, r0, c0, c0, 5 ;@ MPIDR
+	MOV     r1, #0xFF
+	ANDS    r1, r1, r0
+	BNE     smp
 
-.align 4
-.globl font
-font:
-	.incbin "font1.bin"
+	BL      start
+	BL      NotOkLoop
 
-.align 4
-.global _binary_initcode_start
-_binary_initcode_start:
-	.incbin "initcode"
-.global _binary_initcode_end
-_binary_initcode_end:
+@ during startup, kernel stack uses user address, now switch it to kernel addr
+.global jump_stack
+jump_stack:
+	MOV     r0, sp
+	ADD     r0, r0, #KERNBASE
+	MOV     sp, r0
+	MOV     pc, lr
 
-.align 4
-.global _binary_fs_img_start
-_binary_fs_img_start:
-	.incbin "fs.img"
-.global _binary_fs_img_end
-_binary_fs_img_end:
-
-
-.section .text
-
-entry:
-
-/* interrupts disabled, SVC mode by setting PSR_DISABLE_IRQ|PSR_DISABLE_FIQ|PSR_MODE_SVC */
-mov r1, #0x00000080 /* PSR_DISABLE_IRQ */
-orr r1, #0x00000040 /* PSR_DISABLE_FIQ */
-orr r1, #0x00000013 /* PSR_MODE_SVC */
-msr cpsr, r1
-
-mov sp, #0x3000
-bl mmuinit0
-
-/* switch SP and PC into KZERO space */
-mov r1, sp
-add r1, #0x80000000
-mov sp, r1
-
-ldr r1, =_pagingstart
-bx r1
-
-.global _pagingstart
-_pagingstart:
-bl cmain  /* call C functions now */
-bl NotOkLoop
+smp:
+	B       .
 
 .global dsb_barrier
 dsb_barrier:

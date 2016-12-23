@@ -46,16 +46,15 @@ CFLAGS += -DRPI2 -mfpu=neon-vfpv4 -mfloat-abi=hard -march=armv7-a -mtune=cortex-
 # use of enum values across objects may fail
 CFLAGS += -fno-short-enums
 
-
 CFLAGS += -I include
 
 CC := $(ARMGNU)-gcc
 
 # The names of all object files that must be generated. Deduced from the
 # assembly code files in source.
-OBJECTS := $(patsubst $(SOURCE)%.s,$(BUILD)%.o,$(wildcard $(SOURCE)*.s))
-
-C_OBJS := $(patsubst $(SOURCE)%.c,$(BUILD)%.o,$(wildcard $(SOURCE)*.c))
+OBJECTS := $(patsubst $(SOURCE)%.S,$(BUILD)%.o,$(wildcard $(SOURCE)*.S))
+OBJECTS += $(patsubst $(SOURCE)%.c,$(BUILD)%.o,$(wildcard $(SOURCE)*.c))
+OBJECTS += $(BUILD)font.o $(BUILD)initcode.o $(BUILD)ramdisk.o
 
 # Rule to make everything.
 all: $(TARGET) $(LIST)
@@ -76,12 +75,24 @@ $(TARGET) : $(BUILD)output.elf
 # this is for undefined reference to `__aeabi_idiv' error
 LIBOPTS := -L"/opt/local/lib/gcc/arm-none-eabi/5.1.0/" -lgcc
 LIBOPTS += -L. $(patsubst %,-l %,$(LIBRARIES))
-$(BUILD)output.elf : $(OBJECTS) $(C_OBJS) $(LINKER)
-	$(ARMGNU)-ld --no-undefined $(OBJECTS) $(C_OBJS) $(LIBOPTS) -Map $(MAP) -o $(BUILD)output.elf -T $(LINKER)
+$(BUILD)output.elf : $(OBJECTS) $(LINKER)
+	$(ARMGNU)-ld --no-undefined $(OBJECTS) $(LIBOPTS) -Map $(MAP) -o $(BUILD)output.elf -T $(LINKER)
 
 # Rule to make the object files.
-$(BUILD)%.o: $(SOURCE)%.s $(BUILD)
-	$(ARMGNU)-as -I $(SOURCE) $< -o $@
+$(BUILD)font.o: $(SOURCE)font1.bin
+	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $< $@
+
+$(BUILD)initcode.o: $(SOURCE)initcode
+	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $< $@
+
+$(BUILD)ramdisk.o: $(SOURCE)fs.img
+	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $< $@
+
+# $(BUILD)%.o: $(SOURCE)%.s $(BUILD)
+# 	$(ARMGNU)-as -I $(SOURCE) $< -o $@
+
+$(BUILD)%.o: $(SOURCE)%.S $(BUILD)
+	$(CC) -I include -c $<  -o $@
 
 $(BUILD)%.o: $(SOURCE)%.c $(BUILD)
 	$(CC) -c $(CFLAGS) $<  -o $@

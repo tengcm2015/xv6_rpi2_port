@@ -203,7 +203,7 @@ void            uartputc(uint);
 void            setgpiofunc(uint, uint);
 void            setgpioval(uint, uint);
 void            led_flash(int, int);
-void            led_flash_no_map(void);
+void            led_flash_no_map(int, int);
 
 // vm.c
 void            seginit(void);

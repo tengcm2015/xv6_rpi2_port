@@ -51,7 +51,7 @@ void enableirqminiuart(void);
 
 int cmain()
 {
-    mmuinit1();
+    // mmuinit1();
     machinit();
     uartinit(115200);
     dsb_barrier();
