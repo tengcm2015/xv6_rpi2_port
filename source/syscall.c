@@ -1,11 +1,3 @@
-/*****************************************************************
-*       syscall.c
-*       adapted from MIT xv6 by Zhiyi Huang, hzy@cs.otago.ac.nz
-*       University of Otago
-*
-********************************************************************/
-
-
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -15,74 +7,90 @@
 #include "arm.h"
 #include "syscall.h"
 
-// User code makes a system call with INT T_SYSCALL.
-// System call number in %eax.
-// Arguments on the stack, from the user call to the C
-// library system call function. The saved user %esp points
-// to a saved program counter, and then the first argument.
+// User code makes a system call with INT T_SYSCALL. System call number
+// in r0. Arguments on the stack, from the user call to the C library
+// system call function. The saved user sp points to the first argument.
 
 // Fetch the int at addr from the current process.
-int
-fetchint(uint addr, int *ip)
+int fetchint(uint addr, int *ip)
 {
-  if(addr >= curr_proc->sz || addr+4 > curr_proc->sz)
-    return -1;
-  *ip = *(int*)(addr);
-  return 0;
+    if(addr >= curr_proc->sz || addr+4 > curr_proc->sz) {
+        return -1;
+    }
+
+    *ip = *(int*)(addr);
+    return 0;
 }
 
 // Fetch the nul-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
-int
-fetchstr(uint addr, char **pp)
+int fetchstr(uint addr, char **pp)
 {
-  char *s, *ep;
+    char *s, *ep;
 
-  if(addr >= curr_proc->sz)
+    if(addr >= curr_proc->sz) {
+        return -1;
+    }
+
+    *pp = (char*)addr;
+    ep = (char*)curr_proc->sz;
+
+    for(s = *pp; s < ep; s++) {
+        if(*s == 0) {
+            return s - *pp;
+        }
+    }
+
     return -1;
-  *pp = (char*)addr;
-  ep = (char*)curr_proc->sz;
-  for(s = *pp; s < ep; s++)
-    if(*s == 0)
-      return s - *pp;
-  return -1;
 }
 
-// Fetch the nth 32-bit system call argument.
-int
-argint(int n, int *ip)
+// Fetch the nth (starting from 0) 32-bit system call argument.
+// In our ABI, r0 contains system call index, r1-r4 contain parameters.
+// now we support system calls with at most 4 parameters.
+int argint(int n, int *ip)
 {
-  return fetchint(curr_proc->tf->sp + 4*n, ip);
+    if (n > 3) {
+        panic ("too many system call parameters\n");
+    }
+
+    *ip = *(&curr_proc->tf->r1 + n);
+
+    return 0;
 }
 
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size n bytes.  Check that the pointer
 // lies within the process address space.
-int
-argptr(int n, char **pp, int size)
+int argptr(int n, char **pp, int size)
 {
-  int i;
-  
-  if(argint(n, &i) < 0)
-    return -1;
-  if((uint)i >= curr_proc->sz || (uint)i+size > curr_proc->sz)
-    return -1;
-  *pp = (char*)i;
-  return 0;
+    int i;
+
+    if(argint(n, &i) < 0) {
+        return -1;
+    }
+
+    if((uint)i >= curr_proc->sz || (uint)i+size > curr_proc->sz) {
+        return -1;
+    }
+
+    *pp = (char*)i;
+    return 0;
 }
 
 // Fetch the nth word-sized system call argument as a string pointer.
 // Check that the pointer is valid and the string is nul-terminated.
 // (There is no shared writable memory, so the string can't change
 // between this check and being used by the kernel.)
-int
-argstr(int n, char **pp)
+int argstr(int n, char **pp)
 {
-  int addr;
-  if(argint(n, &addr) < 0)
-    return -1;
-  return fetchstr(addr, pp);
+    int addr;
+
+    if(argint(n, &addr) < 0) {
+        return -1;
+    }
+
+    return fetchstr(addr, pp);
 }
 
 extern int sys_chdir(void);
@@ -108,45 +116,49 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 
 static int (*syscalls[])(void) = {
-[SYS_fork]    sys_fork,
-[SYS_exit]    sys_exit,
-[SYS_wait]    sys_wait,
-[SYS_pipe]    sys_pipe,
-[SYS_read]    sys_read,
-[SYS_kill]    sys_kill,
-[SYS_exec]    sys_exec,
-[SYS_fstat]   sys_fstat,
-[SYS_chdir]   sys_chdir,
-[SYS_dup]     sys_dup,
-[SYS_getpid]  sys_getpid,
-[SYS_sbrk]    sys_sbrk,
-[SYS_sleep]   sys_sleep,
-[SYS_uptime]  sys_uptime,
-[SYS_open]    sys_open,
-[SYS_write]   sys_write,
-[SYS_mknod]   sys_mknod,
-[SYS_unlink]  sys_unlink,
-[SYS_link]    sys_link,
-[SYS_mkdir]   sys_mkdir,
-[SYS_close]   sys_close,
+        [SYS_fork]    sys_fork,
+        [SYS_exit]    sys_exit,
+        [SYS_wait]    sys_wait,
+        [SYS_pipe]    sys_pipe,
+        [SYS_read]    sys_read,
+        [SYS_kill]    sys_kill,
+        [SYS_exec]    sys_exec,
+        [SYS_fstat]   sys_fstat,
+        [SYS_chdir]   sys_chdir,
+        [SYS_dup]     sys_dup,
+        [SYS_getpid]  sys_getpid,
+        [SYS_sbrk]    sys_sbrk,
+        [SYS_sleep]   sys_sleep,
+        [SYS_uptime]  sys_uptime,
+        [SYS_open]    sys_open,
+        [SYS_write]   sys_write,
+        [SYS_mknod]   sys_mknod,
+        [SYS_unlink]  sys_unlink,
+        [SYS_link]    sys_link,
+        [SYS_mkdir]   sys_mkdir,
+        [SYS_close]   sys_close,
 };
 
-void
-syscall(void)
+void syscall(void)
 {
-  int num;
+    int num;
+    int ret;
 
-  num = curr_proc->tf->r0;
-  if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-//    cprintf("\n%d %s: sys call %d syscall address %x\n",
-//            curr_proc->pid, curr_proc->name, num, syscalls[num]);
+    num = curr_proc->tf->r0;
 
-    if(num == SYS_exec) {
-	if(syscalls[num]() == -1) curr_proc->tf->r0 = -1;
-    } else curr_proc->tf->r0 = syscalls[num]();
-  } else {
-    cprintf("%d %s: unknown sys call %d\n",
-            curr_proc->pid, curr_proc->name, num);
-    curr_proc->tf->r0 = -1;
-  }
+    //cprintf ("syscall(%d) from %s(%d)\n", num, curr_proc->name, curr_proc->pid);
+
+    if((num > 0) && (num <= NELEM(syscalls)) && syscalls[num]) {
+        ret = syscalls[num]();
+
+        // in ARM, parameters to main (argc, argv) are passed in r0 and r1
+        // do not set the return value if it is SYS_exec (the user program
+        // anyway does not expect us to return anything).
+        if (num != SYS_exec) {
+            curr_proc->tf->r0 = ret;
+        }
+    } else {
+        cprintf("%d %s: unknown sys call %d\n", curr_proc->pid, curr_proc->name, num);
+        curr_proc->tf->r0 = -1;
+    }
 }

@@ -12,6 +12,12 @@
 #define POS_TAG_BUFLEN		1
 #define POS_TAG_DATALEN		2
 #define POS_TAG_DATA		3
+// typedef enum {
+//     T_OIDENT = 0,
+//     T_OVALUE_SIZE = 1,
+//     T_ORESPONSE = 2,
+//     T_OVALUE = 3,
+//     } rpi_tag_offset_t;
 
 
 #define MB_HEADER_LENGTH 2
@@ -34,5 +40,3 @@
 #define MPI_TAG_GET_FIRMWARE		0x00000001
 #define MPI_TAG_GET_CLOCK_STATE		0x00030001
 #define MPI_TAG_SET_CLOCK_STATE		0x00038001
-
-

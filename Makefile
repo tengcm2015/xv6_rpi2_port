@@ -82,9 +82,6 @@ $(BUILD)output.elf : $(OBJECTS) $(LINKER)
 $(BUILD)font.o: $(SOURCE)font1.bin
 	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $< $@
 
-$(BUILD)initcode.o: $(SOURCE)initcode
-	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $< $@
-
 $(BUILD)ramdisk.o: $(SOURCE)fs.img
 	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $< $@
 

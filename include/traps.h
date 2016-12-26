@@ -5,7 +5,7 @@
 *
 ********************************************************************/
 
-
+#include "rpi_interrupts.h"
 
 // These are arbitrarily chosen, but with care not to overlap
 // processor defined exceptions or interrupt vectors.
@@ -18,4 +18,4 @@
 #define IRQ_TIMER3	3
 #define IRQ_MINIUART	29
 
-#define INT_REGS_BASE 	(DEVSPACE+0xB200)
+#define INT_REGS_BASE 	RPI_INTERRUPT_CONTROLLER_BASE

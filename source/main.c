@@ -13,12 +13,13 @@
 #include "mmu.h"
 #include "proc.h"
 #include "arm.h"
-#include "mailbox.h"
+// #include "rpi_mailbox.h"
 
-extern char end[]; // first address after kernel loaded from ELF file
-extern pde_t *kpgdir;
+extern void* end; // first address after kernel loaded from ELF file
 extern FBI fbinfo;
-extern volatile uint *mailbuffer;
+
+struct cpu	cpus[NCPU];
+struct cpu	*curr_cpu;
 
 void OkLoop()
 {
@@ -42,39 +43,41 @@ void NotOkLoop()
     }
 }
 
-void machinit(void)
-{
-    memset(cpus, 0, sizeof(struct cpu)*NCPU);
-}
-
-void enableirqminiuart(void);
-
 int cmain()
 {
-    // mmuinit1();
-    machinit();
-    uartinit(115200);
-    dsb_barrier();
-    consoleinit();
-    cprintf("\nHello World from xv6\n");
-    kinit1(end, P2V(8*1024*1024));  // reserve 8 pages for PGDIR
-    kpgdir=p2v(K_PDX_BASE);
+    // mailboxinit();
+    // create_request(mailbuffer, MPI_TAG_GET_ARM_MEMORY, 8, 0, 0);
+    // writemailbox((uint *)mailbuffer, 8);
+    // readmailbox(8);
+    // if(mailbuffer[1] != 0x80000000)
+    //     cprintf("new error readmailbox\n");
+    // else
+    //     cprintf("ARM memory is %x %x\n",
+    //         mailbuffer[MB_HEADER_LENGTH + TAG_HEADER_LENGTH],
+    //         mailbuffer[MB_HEADER_LENGTH + TAG_HEADER_LENGTH + 1]
+    //     );
+    uint vectbl;
 
-    mailboxinit();
-    create_request(mailbuffer, MPI_TAG_GET_ARM_MEMORY, 8, 0, 0);
-    writemailbox((uint *)mailbuffer, 8);
-    readmailbox(8);
-    if(mailbuffer[1] != 0x80000000)
-        cprintf("new error readmailbox\n");
-    else
-        cprintf("ARM memory is %x %x\n",
-            mailbuffer[MB_HEADER_LENGTH + TAG_HEADER_LENGTH],
-            mailbuffer[MB_HEADER_LENGTH + TAG_HEADER_LENGTH + 1]
-        );
+    curr_cpu = &cpus[0];
+
+    uartinit(BAUDRATE);
+
+    vectbl = P2V_WO ((HVECTORS & PDE_MASK) + PA_START);
+
+    init_vmm ();
+    kpt_freerange (align_up(&end, PT_SZ), vectbl);
+    kpt_freerange (vectbl + PT_SZ, P2V_WO(INIT_KERNMAP));
+    paging_init (INIT_KERNMAP, PHYSTOP);
+
+    kmem_init ();
+    kmem_init2(P2V(INIT_KERNMAP), P2V(PHYSTOP));
+
+    trap_init ();               // vector table and stacks for models
+
+    consoleinit ();             // console
 
     pinit();
-    tvinit();
-    cprintf("it is ok after tvinit\n");
+    cprintf("it is ok after pinit\n");
     binit();
     cprintf("it is ok after binit\n");
     fileinit();
@@ -84,8 +87,8 @@ int cmain()
     ideinit();
     cprintf("it is ok after ideinit\n");
     timer3init();
-    kinit2(P2V(8*1024*1024), P2V(PHYSTOP));
-    cprintf("it is ok after kinit2\n");
+
+    sti ();
     userinit();
     cprintf("it is ok after userinit\n");
     scheduler();

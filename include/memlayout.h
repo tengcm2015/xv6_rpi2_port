@@ -13,6 +13,7 @@
 // Memory layout
 // we first map 1MB low memory containing kernel code.
 #define INIT_KERN_SZ    0x00100000
+#define INIT_KERNMAP 	(INIT_KERN_SZ + PA_START)
 #define DEV_MEM_SZ      0x01000000
 
 #define EXTMEM          0x00000000      /* start of kernel code */

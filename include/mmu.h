@@ -61,10 +61,11 @@
 #define PT_ORDER    10
 
 /*=================================================*/
+// kernel page table, reserved in the kernel.ld
+extern uint32 _kernel_pgtbl;
+extern uint32 _user_pgtbl;
 
 #define MBYTE		0x100000
-#define K_PDX_BASE	0x4000
-#define K_PTX_BASE	0x3000
 
 #define CACHELINESIZE   32
 

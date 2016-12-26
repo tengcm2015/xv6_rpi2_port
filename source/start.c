@@ -4,26 +4,20 @@
 #include "arm.h"
 #include "defs.h"
 
-// kernel page table, reserved in the kernel.ld
-extern u32 _kernel_pgtbl;
-extern u32 _user_pgtbl;
+uint32 *kernel_pgtbl = &_kernel_pgtbl;
+uint32 *user_pgtbl = &_user_pgtbl;
 
-u32 *kernel_pgtbl = &_kernel_pgtbl;
-u32 *user_pgtbl = &_user_pgtbl;
-
-#define PDE_SHIFT 20
-
-u32 get_pde (u32 virt)
+uint32 get_pde (uint32 virt)
 {
     virt >>= PDE_SHIFT;
     return kernel_pgtbl[virt];
 }
 
 // setup the boot page table: dev_mem whether it is device memory
-void set_bootpgtbl (u32 virt, u32 phy, uint len, int dev_mem )
+void set_bootpgtbl (uint32 virt, uint32 phy, uint len, int dev_mem )
 {
-    u32	pde;
-    int		idx;
+    uint32 pde;
+    int idx;
 
     // convert all the parameters to indexes
     virt >>= PDE_SHIFT;
@@ -65,7 +59,7 @@ static void _flush_all (void)
     // asm ("MCR p15,0,%[r],c7,c6,0": :[r]"r" (val):);
 }
 
-void load_pgtlb (u32* kern_pgtbl, u32* user_pgtbl)
+void load_pgtlb (uint32* kern_pgtbl, uint32* user_pgtbl)
 {
     uint	ret;
     char	arch;
@@ -120,9 +114,9 @@ extern void * edata_entry;
 extern void * svc_stktop;
 extern void jump_stack (void);
 int cmain(void);
+
 extern void * edata;
 extern void * end;
-extern void * memset(void *dst, int c, uint n);
 
 // clear the BSS section for the main kernel, see kernel.ld
 void clear_bss (void)
@@ -132,7 +126,7 @@ void clear_bss (void)
 
 void start (void)
 {
-    // u32  vectbl;
+    // uint32  vectbl;
     // _puts("starting xv6 for ARM...\n");
 
     // double map the low memory, required to enable paging
@@ -148,6 +142,8 @@ void start (void)
     //     cprintf ("error: vector table overlaps kernel\n");
     // }
     // V, P, len, is_mem
+    set_bootpgtbl(HVECTORS, PA_START, 1 << PDE_SHIFT, 1); // V, P, SZ, ISDEV
+    set_bootpgtbl(GPUMEMBASE, GPUMEMBASE, GPUMEMSIZE, 1); // V, P, SZ, ISDEV
     // set_bootpgtbl(VEC_TBL, PHY_START, 1 << PDE_SHIFT, 0); // V, P, SZ, ISDEV
     // set_bootpgtbl(DEVBASE1, DEVBASE1, DEV_MEM_SZ, 1); // V, P, SZ, ISDEV: add to prevent crash on _puts
     // set_bootpgtbl(KERNBASE+DEVBASE1, DEVBASE1, DEV_MEM_SZ, 1); // V, P, SZ, ISDEV

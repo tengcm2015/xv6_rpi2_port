@@ -1,10 +1,3 @@
-/*****************************************************************
-*       timer.c
-*       by Zhiyi Huang, hzy@cs.otago.ac.nz
-*       University of Otago
-*
-********************************************************************/
-
 // The System Timer peripheral
 
 #include "types.h"
@@ -16,66 +9,55 @@
 #include "arm.h"
 #include "spinlock.h"
 
-#define TIMER_REGS_BASE		0xFE003000
-#define CONTROL_STATUS		0x0 // control/status
-#define COUNTER_LO		0x4 // the time-stamp lower 32 bits
-#define COUNTER_HI		0x8 // the time-stamp higher 32 bits
-#define COMPARE0		0xc  // compare 0
-#define COMPARE1                0x10 // compare 1
-#define COMPARE2                0x14 // compare 2
-#define COMPARE3                0x18 // compare 3
+#include "rpi_systimer.h"
+#include "rpi_interrupts.h"
 
 #define TIMER_FREQ		10000  // interrupt 100 times/sec.
 
-void 
-enabletimer3irq(void)
-{
-        intctrlregs *ip;
+struct spinlock tickslock;
+uint ticks;
 
-        ip = (intctrlregs *)INT_REGS_BASE;
-        ip->gpuenable[0] |= 1 << IRQ_TIMER3; // enable the system timer3 irq
+static rpi_sys_timer_t* rpiSystemTimer = (rpi_sys_timer_t*)RPI_SYSTIMER_BASE;
+
+rpi_sys_timer_t* RPI_GetSystemTimer(void)
+{
+    return rpiSystemTimer;
 }
 
-
-void 
+void
 timer3init(void)
 {
-uint v;
+    uint v;
 
-	enabletimer3irq();
+    // enabletimer3irq();
+    RPI_GetIrqController()->Enable_IRQs_1 |= 1 << IRQ_TIMER3;
 
-	v = inw(TIMER_REGS_BASE+COUNTER_LO);
-	v += TIMER_FREQ;
-
-	outw(TIMER_REGS_BASE+COMPARE3, v);
-	ticks = 0;
+    v = rpiSystemTimer->counter_lo;
+    rpiSystemTimer->compare3 = v + TIMER_FREQ;
+    ticks = 0;
 }
 
-void 
+void
 timer3intr(void)
 {
-uint v;
-//cprintf("timer3 interrupt: %x\n", inw(TIMER_REGS_BASE+CONTROL_STATUS));
-	outw(TIMER_REGS_BASE+CONTROL_STATUS, (1 << IRQ_TIMER3)); // clear timer3 irq
+    uint v;
+    //cprintf("timer3 interrupt: %x\n", rpiSystemTimer->control_status);
+    rpiSystemTimer->control_status = 1 << IRQ_TIMER3; // clear timer3 irq
+    ticks++;
+    wakeup(&ticks);
 
-	ticks++;
-	wakeup(&ticks);
-
-	// reset the value of compare3
-	v=inw(TIMER_REGS_BASE+COUNTER_LO);
-	v += TIMER_FREQ;
-	outw(TIMER_REGS_BASE+COMPARE3, v);
+    // reset the value of compare3
+    v = rpiSystemTimer->counter_lo;
+    rpiSystemTimer->compare3 = v + TIMER_FREQ;
 }
 
 void
 delay(uint m)
 {
-	unsigned long long t;
+    volatile uint32 ts = rpiSystemTimer->counter_lo;
 
-	if(m == 0) return;
-
-	t = getsystemtime() + m;
-	while(t != getsystemtime());
-
-	return;
+    while( ( rpiSystemTimer->counter_lo - ts ) < m )
+    {
+        /* BLANK */
+    }
 }

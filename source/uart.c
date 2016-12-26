@@ -15,6 +15,7 @@
 
 #include "rpi_gpio.h"
 #include "rpi_aux.h"
+#include "rpi_interrupts.h"
 
 #define SYS_FREQ    250000000
 
@@ -93,122 +94,83 @@ RPI_SetGpioLo( rpi_gpio_pin_t gpio )
 void
 setgpioval(rpi_gpio_pin_t gpio, rpi_gpio_value_t value)
 {
-	if( ( value == RPI_IO_LO ) || ( value == RPI_IO_OFF ) )
-	RPI_SetGpioLo( gpio );
-	else if( ( value == RPI_IO_HI ) || ( value == RPI_IO_ON ) )
-	RPI_SetGpioHi( gpio );
-
-	// uint sel, ssel, rsel;
-	//
-	// if(func > 53) return;
-	// sel = func >> 5;
-	// ssel = GPSET0 + (sel << 2);
-	// rsel = GPCLR0 + (sel << 2);
-	// sel = func & 0x1f;
-	// if(val == 0) outw(rsel, 1<<sel);
-	// else outw(ssel, 1<<sel);
+    if( ( value == RPI_IO_LO ) || ( value == RPI_IO_OFF ) )
+        RPI_SetGpioLo( gpio );
+    else if( ( value == RPI_IO_HI ) || ( value == RPI_IO_ON ) )
+        RPI_SetGpioHi( gpio );
 }
 
 
 void
 setgpiofunc(rpi_gpio_pin_t gpio, rpi_gpio_alt_function_t func)
 {
-	rpi_reg_rw_t* fsel_reg = &((rpi_reg_rw_t*)rpiGpio)[ gpio / 10 ];
-	rpi_reg_rw_t fsel_data = *fsel_reg;
-	fsel_data &= ~( FS_MASK << ( ( gpio % 10 ) * 3 ) );
-	fsel_data |= (func << ( ( gpio % 10 ) * 3 ) );
-	*fsel_reg = fsel_data;
-
-	// uint sel, data, shift;
-	//
-	// if(gpio > 53) return;
-	// sel = 0;
-	// while (gpio > 10) {
-	// 	gpio = gpio - 10;
-	// 	sel++;
-	// }
-	// sel = (sel << 2) + GPFSEL0;//fsel_reg
-	// data = inw(sel);
-	// shift = gpio + (gpio << 1);
-	// data &= ~(7 << shift);
-	// data |= func << shift;
-	// outw(sel, data);
+    rpi_reg_rw_t* fsel_reg = &((rpi_reg_rw_t*)rpiGpio)[ gpio / 10 ];
+    rpi_reg_rw_t fsel_data = *fsel_reg;
+    fsel_data &= ~( FS_MASK << ( ( gpio % 10 ) * 3 ) );
+    fsel_data |= (func << ( ( gpio % 10 ) * 3 ) );
+    *fsel_reg = fsel_data;
 }
 
 
 void
 uartputc(uint c)
 {
-	if(c == '\n') {
-		while( ( auxillary->MU_LSR & AUX_MULSR_TX_EMPTY ) == 0 )
-			;
-		auxillary->MU_IO = 0x0d; // add CR before LF
-	}
+    if(c == '\n') {
+        while( ( auxillary->MU_LSR & AUX_MULSR_TX_EMPTY ) == 0 )
+            ;
+        auxillary->MU_IO = 0x0d; // add CR before LF
+    }
 
-	/* Wait until the UART has an empty space in the FIFO */
-	while( ( auxillary->MU_LSR & AUX_MULSR_TX_EMPTY ) == 0 )
-		;
-	/* Write the character to the FIFO for transmission */
-	auxillary->MU_IO = c;
-
-	// while(1) if(inw(AUX_MU_LSR_REG) & 0x20) break;
-	// outw(AUX_MU_IO_REG, c);
+    /* Wait until the UART has an empty space in the FIFO */
+    while( ( auxillary->MU_LSR & AUX_MULSR_TX_EMPTY ) == 0 )
+        ;
+    /* Write the character to the FIFO for transmission */
+    auxillary->MU_IO = c;
 }
 
 static int
 uartgetc(void)
 {
-	if (auxillary->MU_LSR & AUX_MULSR_DATA_READY)
-		return auxillary->MU_IO;
-	else
-		return -1;
-
-	// if(inw(AUX_MU_LSR_REG)&0x1) return inw(AUX_MU_IO_REG);
-	// else return -1;
+    if (auxillary->MU_LSR & AUX_MULSR_DATA_READY)
+        return auxillary->MU_IO;
+    else
+        return -1;
 }
-
-void
-enableirqminiuart(void)
-{
-	intctrlregs *ip;
-
-	ip = (intctrlregs *)INT_REGS_BASE;
-	ip->gpuenable[0] |= (1 << 29);   // enable the miniuart through Aux
-}
-
 
 void
 miniuartintr(void)
 {
-	consoleintr(uartgetc);
+    consoleintr(uartgetc);
 }
 
 void
 uartinit(int baud)
 {
-	/* Write 1 to the LED init nibble in the Function Select GPIO
-		peripheral register to enable LED pin as an output */
-	// rpiGpio->LED_GPFSEL |= LED_GPFBIT;
-	led_flash(500000, 5); // debug
+    /* Write 1 to the LED init nibble in the Function Select GPIO
+    peripheral register to enable LED pin as an output */
+    // rpiGpio->LED_GPFSEL |= LED_GPFBIT;
+    led_flash(500000, 5); // debug
 
-	auxillary->ENABLES = 1;
-	auxillary->MU_CNTL = 0;
-	auxillary->MU_LCR  = AUX_MULCR_8BIT_MODE;
-	auxillary->MU_MCR  = 0;
-	auxillary->MU_IER  = 0x1;
-	auxillary->MU_IIR  = 0xC7;
-	auxillary->MU_BAUD = ( SYS_FREQ / ( 8 * baud ) ) - 1;
+    auxillary->ENABLES = 1;
+    auxillary->MU_CNTL = 0;
+    auxillary->MU_LCR  = AUX_MULCR_8BIT_MODE;
+    auxillary->MU_MCR  = 0;
+    auxillary->MU_IER  = 0x1;
+    auxillary->MU_IIR  = 0xC7;
+    auxillary->MU_BAUD = ( SYS_FREQ / ( 8 * baud ) ) - 1;
 
-	setgpiofunc(RPI_GPIO14, FS_ALT5); // gpio 14, alt 5
-	setgpiofunc(RPI_GPIO15, FS_ALT5); // gpio 15, alt 5
+    setgpiofunc(RPI_GPIO14, FS_ALT5); // gpio 14, alt 5
+    setgpiofunc(RPI_GPIO15, FS_ALT5); // gpio 15, alt 5
 
-	rpiGpio->GPPUD = 0;
-	delay(10);
-	rpiGpio->GPPUDCLK0 = (1 << 14) | (1 << 15);
-	delay(10);
-	rpiGpio->GPPUDCLK0 = 0;
+    rpiGpio->GPPUD = 0;
+    delay(10);
+    rpiGpio->GPPUDCLK0 = (1 << 14) | (1 << 15);
+    delay(10);
+    rpiGpio->GPPUDCLK0 = 0;
 
-	auxillary->MU_CNTL = AUX_MUCNTL_RX_ENABLE | AUX_MUCNTL_TX_ENABLE;
+    auxillary->MU_CNTL = AUX_MUCNTL_RX_ENABLE | AUX_MUCNTL_TX_ENABLE;
 
-	enableirqminiuart();
+    // enableirqminiuart();
+    RPI_GetIrqController()->Enable_IRQs_1 |= (1 << 29);
+
 }

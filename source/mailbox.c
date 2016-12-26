@@ -1,94 +1,75 @@
-/*****************************************************************
-*       mailbox.c
-*       by Zhiyi Huang, hzy@cs.otago.ac.nz
-*       University of Otago
-*
-********************************************************************/
+/*
 
+    Part of the Raspberry-Pi Bare Metal Tutorials
+    Copyright (c) 2015, Brian Sidebotham
+    All rights reserved.
 
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
 
+    1. Redistributions of source code must retain the above copyright notice,
+        this list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright notice,
+        this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+    ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+    CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+    SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+    CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+    ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+    POSSIBILITY OF SUCH DAMAGE.
+
+*/
 #include "types.h"
-#include "defs.h"
-#include "param.h"
-#include "traps.h"
-#include "spinlock.h"
-#include "fs.h"
-#include "file.h"
-#include "memlayout.h"
-#include "mmu.h"
-#include "proc.h"
-#include "arm.h"
-#include "mailbox.h"
+#include "rpi_gpio.h"
+#include "rpi_mailbox.h"
 
-/* Note: for more tags refer to 
-https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface */
-/* Note for Matthew: support more than one tag in buffer */
+/* Mailbox 0 mapped to it's base address */
+static mailbox_t* rpiMailbox0 = (mailbox_t*)RPI_MAILBOX0_BASE;
 
-
-void
-create_request(volatile uint *mbuf, uint tag, uint buflen, uint len, uint *data) 
+void writemailbox( mailbox0_channel_t channel, uint value )
 {
-    int i;
-    volatile uint *tag_info;
-    uint nw, tag_len, total_len;
+    /* For information about accessing mailboxes, see:
+       https://github.com/raspberrypi/firmware/wiki/Accessing-mailboxes */
 
-    tag_info = mbuf + POS_TAG;
+    /* Add the channel number into the lower 4 bits */
+    value &= ~(0xF);
+    value |= channel;
 
-    tag_info[POS_TAG_ID] = tag;
-    tag_info[POS_TAG_BUFLEN] = buflen;
-    tag_info[POS_TAG_DATALEN] = len & 0x7FFFFFFF;
+    /* Wait until the mailbox becomes available and then write to the mailbox
+       channel */
+    while( ( rpiMailbox0->Status & ARM_MS_FULL ) != 0 ) { }
 
-    nw = buflen >> 2;
-
-    if (!data)
-        for (i = 0; i < nw; ++i) tag_info[POS_TAG_DATA + i] = 0;
-    else
-        for (i = 0; i < nw; ++i) tag_info[POS_TAG_DATA + i] = data[i];
-
-    tag_info[POS_TAG_DATA+nw] = 0; // indicate end of tag
-
-    tag_len = mbuf[MB_HEADER_LENGTH + POS_TAG_BUFLEN];
-    total_len = (MB_HEADER_LENGTH*4) + (TAG_HEADER_LENGTH*4) + tag_len + 4;
-
-    mbuf[POS_OVERALL_LENGTH] = total_len;
-    mbuf[POS_RV] = MPI_REQUEST;
-
+    /* Write the modified value + channel number into the write register */
+    rpiMailbox0->Write = value;
 }
 
-volatile uint *mailbuffer;
 
-void mailboxinit()
+int readmailbox( mailbox0_channel_t channel )
 {
-mailbuffer = (uint *)kalloc();
-}
+    /* For information about accessing mailboxes, see:
+       https://github.com/raspberrypi/firmware/wiki/Accessing-mailboxes */
+    int value = -1;
 
-uint
-readmailbox(u8 channel)
-{
-	uint x, y, z;
+    /* Keep reading the register until the desired channel gives us a value */
+    while( ( value & 0xF ) != channel )
+    {
+        /* Wait while the mailbox is empty because otherwise there's no value
+           to read! */
+        while( rpiMailbox0->Status & ARM_MS_EMPTY ) { }
 
-again:
-	while ((inw(MAILBOX_BASE+24) & 0x40000000) != 0);
-	x = inw(MAILBOX_BASE);
-	z = x & 0xf; y = (uint)(channel & 0xf);
-	if(z != y) goto again;
+        /* Extract the value from the Read register of the mailbox. The value
+           is actually in the upper 28 bits */
+        value = rpiMailbox0->Read;
+    }
 
-	return x&0xfffffff0;
-}
-
-void
-writemailbox(uint *addr, u8 channel)
-{
-	uint x, y, a;
-
-	a = (uint)addr;
-	a -= KERNBASE;   /* convert to ARM physical address */
-	a += 0x40000000; /* convert to VC address space */
-	x = a & 0xfffffff0;
-	y = x | (uint)(channel & 0xf);
-
-	flush_dcache_all();
-
-	while ((inw(MAILBOX_BASE+24) & 0x80000000) != 0);
-	outw(MAILBOX_BASE+32, y);
+    /* Return just the value (the upper 28-bits) */
+    return value >> 4;
 }

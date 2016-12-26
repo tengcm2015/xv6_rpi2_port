@@ -1,197 +1,179 @@
-/*****************************************************************
-*       trap.c
-*       by Zhiyi Huang, hzy@cs.otago.ac.nz
-*       University of Otago
-*
-********************************************************************/
-
-
+// The ARM UART, a memory mapped device
 #include "types.h"
 #include "defs.h"
 #include "param.h"
-#include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
 #include "arm.h"
 #include "traps.h"
-#include "spinlock.h"
 
-extern u8 *vectors;
+/** @brief The BCM2835 Interupt controller peripheral at it's base address */
+static rpi_irq_controller_t* rpiIRQController =
+        (rpi_irq_controller_t*)RPI_INTERRUPT_CONTROLLER_BASE;
 
-void cprintf(char*, ...);
-void dsb_barrier(void);
-void flush_idcache(void);
-void *memmove(void *dst, const void *src, uint n);
-void set_mode_sp(char *, uint);
-
-struct spinlock tickslock;
-uint ticks;
-
-void enable_intrs(void)
-{
-        intctrlregs *ip;
-
-        ip = (intctrlregs *)INT_REGS_BASE;
-        ip->gpuenable[0] |= 1 << 29;   // enable the miniuart through Aux
-        //ip->gpuenable[1] |= 1 << 25; // enable uart
-        ip->armenable |= 1 << 0;       // enable the system timer
-}
-
-
-void disable_intrs(void)
-{
-        intctrlregs *ip;
-        int disable;
-
-        ip = (intctrlregs *)INT_REGS_BASE;
-        disable = ~0;
-        ip->gpudisable[0] = disable;
-        ip->gpudisable[1] = disable;
-        ip->armdisable = disable;
-        ip->fiqctrl = 0;
-}
-
-
-void tvinit(void)
-{
-	uint *d, *s;
-	char *ptr;
-
-	/* initialize the exception vectors */
-	d = (uint *)HVECTORS;
-	s = (uint *)&vectors;
-	memmove(d, s, sizeof(Vpage0));
-
-	/* cacheuwbinv(); drain write buffer and prefetch buffer
-	 * writeback and invalidate data cache
-	 * invalidate instruction cache
-	 */
-	dsb_barrier();
-	flush_idcache();
-	ptr = kalloc();
-	memset(ptr, 0, PGSIZE);
-	set_mode_sp(ptr+4096, 0xD1);/* fiq mode, fiq and irq are disabled */
-
-	ptr = kalloc();
-	memset(ptr, 0, PGSIZE);
-	set_mode_sp(ptr+4096, 0xD2);/* irq mode, fiq and irq are disabled */
-	ptr = kalloc();
-	memset(ptr, 0, PGSIZE);
-	set_mode_sp(ptr+4096, 0xDB);/* undefined mode, fiq and irq are disabled */
-	ptr = kalloc();
-	memset(ptr, 0, PGSIZE);
-	set_mode_sp(ptr+4096, 0xD7);/*  abort mode, fiq and irq are disabled */
-	ptr = kalloc();
-	memset(ptr, 0, PGSIZE);
-	set_mode_sp(ptr+4096, 0xD6);/* secure monitor mode, fiq and irq are disabled */
-	ptr = kalloc();
-	memset(ptr, 0, PGSIZE);
-	set_mode_sp(ptr+4096, 0xDF);/* system mode, fiq and irq are disabled */
-
-	dsb_barrier();
-}
-
-void trap_oops(struct trapframe *tf)
-{
-
-cprintf("trapno: %x, spsr: %x, sp: %x, pc: %x cpsr: %x ifar: %x\n", tf->trapno, tf->spsr, tf->sp, tf->pc, tf->cpsr, tf->ifar);
-cprintf("Saved registers: r0: %x, r1: %x, r2: %x, r3: %x, r4: %x, r5: %x\n", tf->r0, tf->r1, tf->r2, tf->r3, tf->r4, tf->r5);
-cprintf("More registers: r6: %x, r7: %x, r8: %x, r9: %x, r10: %x, r11: %x, r12: %x\n", tf->r6, tf->r7, tf->r8, tf->r9, tf->r10, tf->r11, tf->r12);
-
-//NotOkLoop();
-}
-
-void handle_irq(struct trapframe *tf)
-{
-	intctrlregs *ip;
-
-/*cprintf("trapno: %x, spsr: %x, sp: %x, lr: %x cpsr: %x ifar: %x\n", tf->trapno, tf->spsr, tf->sp, tf->pc, tf->cpsr, tf->ifar);
-cprintf("Saved registers: r0: %x, r1: %x, r2: %x, r3: %x, r4: %x, r5: %x, r6: %x\n", tf->r0, tf->r1, tf->r2, tf->r3, tf->r4, tf->r5, tf->r6);
-cprintf("More registers: r6: %x, r7: %x, r8: %x, r9: %x, r10: %x, r11: %x, r12: %x, r13: %x, r14: %x\n", tf->r7, tf->r8, tf->r9, tf->r10, tf->r11, tf->r12, tf->r13, tf->r14);
+/**
+    @brief Return the IRQ Controller register set
 */
-	ip = (intctrlregs *)INT_REGS_BASE;
-	while(ip->gpupending[0] || ip->gpupending[1] || ip->armpending){
-	    if(ip->gpupending[0] & (1 << 3)) {
-		timer3intr();
-	    }
-	    if(ip->gpupending[0] & (1 << 29)) {
-		miniuartintr();
-	    }
-	}
-
-}
-
-
-//PAGEBREAK: 41
-void
-trap(struct trapframe *tf)
+rpi_irq_controller_t* RPI_GetIrqController( void )
 {
-	intctrlregs *ip;
-	uint istimer;
-
-//cprintf("Trap %d from cpu %d eip %x (cr2=0x%x)\n",
-//              tf->trapno, curr_cpu->id, tf->eip, 0);
-  //trap_oops(tf);
-  if(tf->trapno == T_SYSCALL){
-    if(curr_proc->killed)
-      exit();
-    curr_proc->tf = tf;
-    syscall();
-    if(curr_proc->killed)
-      exit();
-    return;
-  }
-
-  istimer = 0;
-  switch(tf->trapno){
-  case T_IRQ:
-	ip = (intctrlregs *)INT_REGS_BASE;
-	while(ip->gpupending[0] || ip->gpupending[1] || ip->armpending){
-	    if(ip->gpupending[0] & (1 << IRQ_TIMER3)) {
-		istimer = 1;
-		timer3intr();
-	    }
-	    if(ip->gpupending[0] & (1 << IRQ_MINIUART)) {
-		miniuartintr();
-	    }
-	}
-
-	break;
-  default:
-    if(curr_proc == 0 || (tf->spsr & 0xF) != USER_MODE){
-      // In kernel, it must be our mistake.
-      cprintf("unexpected trap %d from cpu %d addr %x spsr %x cpsr %x ifar %x\n",
-              tf->trapno, curr_cpu->id, tf->pc, tf->spsr, tf->cpsr, tf->ifar);
-      panic("trap");
-    }
-    // In user space, assume process misbehaved.
-    cprintf("pid %d %s: trap %d on cpu %d "
-            "addr 0x%x spsr 0x%x cpsr 0x%x ifar 0x%x--kill proc\n",
-            curr_proc->pid, curr_proc->name, tf->trapno, curr_cpu->id, tf->pc,
-            tf->spsr, tf->cpsr, tf->ifar);
-    curr_proc->killed = 1;
-  }
-
-  // Force process exit if it has been killed and is in user space.
-  // (If it is still executing in the kernel, let it keep running
-  // until it gets to the regular system call return.)
-
-//cprintf("Proc pointer: %d\n", curr_proc);
-  if(curr_proc){
-        if(curr_proc->killed && (tf->spsr&0xF) == USER_MODE)
-                exit();
-
-  // Force process to give up CPU on clock tick.
-  // If interrupts were on while locks held, would need to check nlock.
-        if(curr_proc->state == RUNNING && istimer)
-                yield();
-
-  // Check if the process has been killed since we yielded
-        if(curr_proc->killed && (tf->spsr&0xF) == USER_MODE)
-                exit();
-  }
-
-//cprintf("Proc pointer: %d after\n", curr_proc);
-
+    return rpiIRQController;
 }
 
+// void enable_intrs(void)
+// {
+//     rpiIRQController->Enable_IRQs_1 |= 1 << 29;     // enable the miniuart through Aux
+//     // rpiIRQController->Enable_IRQs_2 |= 1 << 25;     // enable uart
+//     rpiIRQController->Enable_Basic_IRQs |= 1 << 0;  // enable the system timer
+// }
+//
+// void disable_intrs(void)
+// {
+//     int disable = ~0;
+//     rpiIRQController->Enable_IRQs_1 = disable;
+//     rpiIRQController->Enable_IRQs_2 = disable;
+//     rpiIRQController->Enable_Basic_IRQs = disable;
+//     rpiIRQController->FIQ_control = 0;
+// }
+
+// trap routine
+void swi_handler (struct trapframe *r)
+{
+    curr_proc->tf = r;
+    syscall ();
+}
+
+// trap routine
+void irq_handler (struct trapframe *r)
+{
+    // curr_proc points to the current process. If the kernel is
+    // running scheduler, curr_proc is NULL.
+    if (curr_proc != NULL) {
+        curr_proc->tf = r;
+    }
+
+    while ( rpiIRQController->IRQ_basic_pending
+         || rpiIRQController->IRQ_pending_1
+         || rpiIRQController->IRQ_pending_2
+          )
+    {
+        if(rpiIRQController->IRQ_pending_1 & (1 << IRQ_TIMER3)) {
+            timer3intr();
+        }
+        if(rpiIRQController->IRQ_pending_1 & (1 << IRQ_MINIUART)) {
+            miniuartintr();
+        }
+    }
+}
+
+// trap routine
+void reset_handler (struct trapframe *r)
+{
+    cli();
+    cprintf ("reset at: 0x%x \n", r->pc);
+}
+
+// trap routine
+void und_handler (struct trapframe *r)
+{
+    cli();
+    cprintf ("und at: 0x%x \n", r->pc);
+}
+
+// trap routine
+void dabort_handler (struct trapframe *r)
+{
+    uint dfs, fa;
+    extern void show_callstk (char *s);
+    cli();
+
+    // read data fault status register
+    asm("MRC p15, 0, %[r], c5, c0, 0": [r]"=r" (dfs)::);
+
+    // read the fault address register
+    asm("MRC p15, 0, %[r], c6, c0, 0": [r]"=r" (fa)::);
+
+    cprintf ("data abort: instruction 0x%x, fault addr 0x%x, reason 0x%x \n",
+             r->pc, fa, dfs);
+
+    dump_trapframe (r);
+    show_callstk("Stack dump for data exception.");
+}
+
+// trap routine
+void iabort_handler (struct trapframe *r)
+{
+    uint ifs;
+
+    // read fault status register
+    asm("MRC p15, 0, %[r], c5, c0, 0": [r]"=r" (ifs)::);
+
+    cli();
+    cprintf ("prefetch abort at: 0x%x (reason: 0x%x)\n", r->pc, ifs);
+    dump_trapframe (r);
+}
+
+// trap routine
+void na_handler (struct trapframe *r)
+{
+    cli();
+    cprintf ("n/a at: 0x%x \n", r->pc);
+}
+
+// trap routine
+void fiq_handler (struct trapframe *r)
+{
+    cli();
+    cprintf ("fiq at: 0x%x \n", r->pc);
+}
+
+// low-level init code: in real hardware, lower memory is usually mapped
+// to flash during startup, we need to remap it to SDRAM
+void trap_init ( )
+{
+    volatile uint32 *ram_start;
+    char *stk;
+    int i;
+    uint modes[] =
+    { PSR_MODE_FIQ
+    , PSR_MODE_IRQ
+    , PSR_MODE_ABT
+    , PSR_MODE_UND
+    };
+
+    // set the reset vector to point to real reset handler
+    ram_start = (uint32*)HVECTORS;
+    ram_start[8]  = (uint32)trap_reset;
+
+    // initialize the stacks for different mode
+    for (i = 0; i < sizeof(modes)/sizeof(uint); i++) {
+        stk = alloc_page ();
+
+        if (stk == NULL) {
+            panic("failed to alloc memory for irq stack");
+        }
+
+        set_stk (modes[i], (uint)stk);
+    }
+
+    enable_interrupts();
+}
+
+void dump_trapframe (struct trapframe *tf)
+{
+    cprintf ("r14_svc: 0x%x\n", tf->r14_svc);
+    cprintf ("   spsr: 0x%x\n", tf->spsr);
+    cprintf ("     r0: 0x%x\n", tf->r0);
+    cprintf ("     r1: 0x%x\n", tf->r1);
+    cprintf ("     r2: 0x%x\n", tf->r2);
+    cprintf ("     r3: 0x%x\n", tf->r3);
+    cprintf ("     r4: 0x%x\n", tf->r4);
+    cprintf ("     r5: 0x%x\n", tf->r5);
+    cprintf ("     r6: 0x%x\n", tf->r6);
+    cprintf ("     r7: 0x%x\n", tf->r7);
+    cprintf ("     r8: 0x%x\n", tf->r8);
+    cprintf ("     r9: 0x%x\n", tf->r9);
+    cprintf ("    r10: 0x%x\n", tf->r10);
+    cprintf ("    r11: 0x%x\n", tf->r11);
+    cprintf ("    r12: 0x%x\n", tf->r12);
+    cprintf ("     pc: 0x%x\n", tf->pc);
+}

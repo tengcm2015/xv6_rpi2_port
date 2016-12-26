@@ -10,19 +10,28 @@ struct proc;
 struct spinlock;
 struct stat;
 struct superblock;
+struct trapframe;
 
 void OkLoop(void);
 void NotOkLoop(void);
 
-// mmu.c
-void            mmuinit1(void);
-void            barriers(void);
-void            dsb_barrier(void);
-void            flush_tlb(void);
+// arm.c
+uint            inw(uint addr);
+void            outw(uint addr, uint data);
+void            cli (void);
+void            sti (void);
+uint            readcpsr(void);
+uint            cpsr_usr(void);
+int             int_enabled();
+void            pushcli(void);
+void            popcli(void);
+void            getcallerpcs(void *, uint*);
+void            show_callstk(char *);
+// asm.S
+void            set_stk(uint mode, uint addr);
+void*           get_fp(void);
+void            enable_interrupts(void);
 void            flush_dcache_all(void);
-void            flush_dcache(uint va1, uint va2);
-void            flush_idcache(void);
-void            set_pgtbase(uint base);
 
 // bio.c
 void            binit(void);
@@ -30,12 +39,22 @@ struct buf*     bread(uint, uint);
 void            brelse(struct buf*);
 void            bwrite(struct buf*);
 
+// buddy.c
+void            kmem_init (void);
+void            kmem_init2(void *vstart, void *vend);
+void*           kmalloc (int order);
+void            kfree (void *mem, int order);
+void            free_page(void *v);
+void*           alloc_page (void);
+void            kmem_test_b (void);
+int             get_order (uint32 v);
+
 // console.c
 void            consoleinit(void);
 void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
-void            drawcharacter(u8, uint, uint);
+void            drawcharacter(uint8, uint, uint);
 void            gpuputc(uint);
 
 
@@ -97,11 +116,11 @@ void            stati(struct inode*, struct stat*);
 int             writei(struct inode*, char*, uint, uint);
 
 // kalloc.c
-char*           kalloc(void);
-void            kfree(char*);
-void            kinit1(void*, void*);
-void            kinit2(void*, void*);
-
+// char*           kalloc(void);
+// void            kfree(char*);
+// void            kinit1(void*, void*);
+// void            kinit2(void*, void*);
+// void            kmem_init (void);
 
 // log.c
 void            initlog(void);
@@ -151,21 +170,19 @@ void            KeyboardUpdate(void);
 char            KeyboardGetChar(void);
 uint            KeyboardCount(void);
 uint            KeyboardGetAddress(uint);
-struct KeyboardLeds KeyboardGetLedSupport(uint);
+struct          KeyboardLeds KeyboardGetLedSupport(uint);
 
 // spinlock.c
 void            acquire(struct spinlock*);
-void            getcallerpcs(void*, uint*);
 int             holding(struct spinlock*);
 void            initlock(struct spinlock*, char*);
 void            release(struct spinlock*);
-void            pushcli(void);
-void            popcli(void);
 
 // string.c
 int             memcmp(const void*, const void*, uint);
 void*           memmove(void*, const void*, uint);
 void*           memset(void*, int, uint);
+void*           memcpy(void *dst, const void *src, uint n);
 char*           safestrcpy(char*, const char*, int);
 int             strlen(const char*);
 int             strncmp(const char*, const char*, uint);
@@ -183,18 +200,23 @@ void            syscall(void);
 // timer.c
 void            timer3init(void);
 void            timer3intr(void);
-unsigned long long getsystemtime(void);
 void            delay(uint);
+extern struct   spinlock tickslock;
+extern uint     ticks;
 
 // trap.c
-void            tvinit(void);
-void            sti(void);
-void            cli(void);
-void            disable_intrs(void);
-void            enable_intrs(void);
-extern uint             ticks;
-extern struct spinlock  tickslock;
-uint            readcpsr(void);
+void            trap_init(void);
+void            dump_trapframe (struct trapframe *tf);
+
+// trap_asm.S
+void            trap_reset(void);
+void            trap_und(void);
+void            trap_swi(void);
+void            trap_iabort(void);
+void            trap_dabort(void);
+void            trap_na(void);
+void            trap_irq(void);
+void            trap_fiq(void);
 
 // uart.c
 void            uartinit(int);
@@ -206,11 +228,6 @@ void            led_flash(int, int);
 void            led_flash_no_map(int, int);
 
 // vm.c
-void            seginit(void);
-void            kvmalloc(void);
-void            vmenable(void);
-pde_t*          setupkvm(void);
-char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, uint, uint);
 int             deallocuvm(pde_t*, uint, uint);
 void            freevm(pde_t*);
@@ -218,17 +235,12 @@ void            inituvm(pde_t*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
 pde_t*          copyuvm(pde_t*, uint);
 void            switchuvm(struct proc*);
-void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
-void            clearpteu(pde_t*, char*);
-
-// mailbox.c
-uint            readmailbox(u8);
-void            writemailbox(uint*, u8);
-void            create_request(volatile uint*, uint, uint, uint, uint*);
-void            mailboxinit(void);
-
-
+void            clearpteu(pde_t *pgdir, char *uva);
+void*           kpt_alloc(void);
+void            init_vmm (void);
+void            kpt_freerange (uint32 low, uint32 hi);
+void            paging_init (uint phy_low, uint phy_hi);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

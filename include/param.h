@@ -1,3 +1,7 @@
+#ifndef PARAM_INCLUDE
+#define PARAM_INCLUDE
+
+
 #define NPROC        64  // maximum number of processes
 #define KSTACKSIZE 4096  // size of per-process kernel stack
 #define NCPU          8  // maximum number of CPUs
@@ -10,3 +14,8 @@
 #define MAXARG       32  // max exec arguments
 #define LOGSIZE      10  // max data sectors in on-disk log
 
+#define HZ           10
+#define BAUDRATE     115200
+
+#define N_CALLSTK    15
+#endif

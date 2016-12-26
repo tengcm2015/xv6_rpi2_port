@@ -9,15 +9,14 @@
 
 #ifndef __ASSEMBLER__
 
-#include "types.h"
 #include "memlayout.h"
 
-typedef volatile u32 rpi_reg_rw_t;
-typedef volatile const u32 rpi_reg_ro_t;
-typedef volatile u32 rpi_reg_wo_t;
+typedef volatile uint32 rpi_reg_rw_t;
+typedef volatile const uint32 rpi_reg_ro_t;
+typedef volatile uint32 rpi_reg_wo_t;
 
-typedef volatile u64 rpi_wreg_rw_t;
-typedef volatile const u64 rpi_wreg_ro_t;
+typedef volatile uint64 rpi_wreg_rw_t;
+typedef volatile const uint64 rpi_wreg_ro_t;
 
 #endif
 
