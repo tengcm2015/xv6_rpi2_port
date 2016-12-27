@@ -49,8 +49,10 @@ led_flash(int interval, int recur)
     for(int i = 0; i < recur; i++)
     {
         delay(interval);
+        cprintf( "LED ON!\r\n" );
         LED_ON(rpiGpio);
         delay(interval);
+        cprintf( "LED OFF!\r\n" );
         LED_OFF(rpiGpio);
     }
 }
@@ -146,28 +148,39 @@ miniuartintr(void)
 void
 uartinit(int baud)
 {
-    /* Write 1 to the LED init nibble in the Function Select GPIO
-    peripheral register to enable LED pin as an output */
-    // rpiGpio->LED_GPFSEL |= LED_GPFBIT;
-    led_flash(500000, 5); // debug
+    /* As this is a mini uart the configuration is complete! Now just
+       enable the uart. Note from the documentation in section 2.1.1 of
+       the ARM peripherals manual:
 
-    auxillary->ENABLES = 1;
+       If the enable bits are clear you will have no access to a
+       peripheral. You can not even read or write the registers */
+    auxillary->ENABLES = AUX_ENA_MINIUART;
+    /* Disable everything */
     auxillary->MU_CNTL = 0;
+    /* Eight-bit mode */
     auxillary->MU_LCR  = AUX_MULCR_8BIT_MODE;
     auxillary->MU_MCR  = 0;
+    /* Disable all interrupts from MU and clear the fifos */
+    // auxillary->MU_IER = 0;
+    // auxillary->MU_IIR = 0xC6;
     auxillary->MU_IER  = 0x1;
     auxillary->MU_IIR  = 0xC7;
+    /* Transposed calculation from Section 2.2.1 of the ARM peripherals
+       manual */
     auxillary->MU_BAUD = ( SYS_FREQ / ( 8 * baud ) ) - 1;
 
+    /* Setup GPIO 14 and 15 as alternative function 5 which is
+       UART 1 TXD/RXD. These need to be set before enabling the UART */
     setgpiofunc(RPI_GPIO14, FS_ALT5); // gpio 14, alt 5
     setgpiofunc(RPI_GPIO15, FS_ALT5); // gpio 15, alt 5
 
     rpiGpio->GPPUD = 0;
     delay(10);
-    rpiGpio->GPPUDCLK0 = (1 << 14) | (1 << 15);
+    rpiGpio->GPPUDCLK0 = (1 << 14);// | (1 << 15);
     delay(10);
     rpiGpio->GPPUDCLK0 = 0;
 
+    /* Disable flow control,enable transmitter and receiver! */
     auxillary->MU_CNTL = AUX_MUCNTL_RX_ENABLE | AUX_MUCNTL_TX_ENABLE;
 
     // enableirqminiuart();

@@ -22,6 +22,8 @@
 
 #define BACKSPACE 0x100
 
+static void consputc (int);
+
 static int panicked = 0;
 
 static struct {
@@ -78,8 +80,7 @@ consolewrite(struct inode *ip, char *buf, int n)
     iunlock(ip);
     acquire(&cons.lock);
     for(i = 0; i < n; i++){
-        gpuputc(buf[i] & 0xff);
-        uartputc(buf[i] & 0xff);
+        consputc(buf[i] & 0xff);
     }
     release(&cons.lock);
     ilock(ip);
@@ -185,7 +186,6 @@ gpuputc(uint c)
             }
         }
     }
-
 }
 
 
@@ -213,8 +213,7 @@ printint(int xx, int base, int sign)
         buf[i++] = '-';
 
     while (--i >= 0) {
-        gpuputc(buf[i]);
-        uartputc(buf[i]);
+        consputc(buf[i]);
     }
 }
 
@@ -238,8 +237,7 @@ cprintf(char *fmt, ...)
     argp = (uint *)(void*)(&fmt + 1);
     for(i = 0; (c = fmt[i] & 0xff) != 0; i++){
         if (c != '%') {
-            gpuputc(c);
-            uartputc(c);
+            consputc(c);
             continue;
         }
         c = fmt[++i] & 0xff;
@@ -257,20 +255,16 @@ cprintf(char *fmt, ...)
             if ((s = (char*)*argp++) == 0)
                 s = "(null)";
             for (; *s; s++) {
-                gpuputc(*s);
-                uartputc(*s);
+                consputc(*s);
             }
             break;
         case '%':
-            gpuputc('%');
-            uartputc('%');
+            consputc('%');
             break;
         default:
             // Print unknown % sequence to draw attention.
-            gpuputc('%');
-            uartputc('%');
-            gpuputc(c);
-            uartputc(c);
+            consputc('%');
+            consputc(c);
             break;
         }
     }
@@ -307,14 +301,15 @@ consputc(int c)
             ;
     }
 
+    // maybe fix this someday...
     if (c == BACKSPACE) {
-        gpuputc('\b'); gpuputc(' '); gpuputc('\b');
+        // gpuputc('\b'); gpuputc(' '); gpuputc('\b');
         uartputc('\b'); uartputc(' '); uartputc('\b');
     } else if(c == C('D')) {
-        gpuputc('^'); gpuputc('D');
+        // gpuputc('^'); gpuputc('D');
         uartputc('^'); uartputc('D');
     } else {
-        gpuputc(c);
+        // gpuputc(c);
         uartputc(c);
     }
 }
