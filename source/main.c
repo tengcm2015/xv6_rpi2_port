@@ -13,7 +13,9 @@
 #include "mmu.h"
 #include "proc.h"
 #include "arm.h"
-// #include "rpi_mailbox.h"
+#include "rpi_gpio.h"
+#include "rpi_mailbox.h"
+#include "rpi_mailbox-interface.h"
 
 extern void* end; // first address after kernel loaded from ELF file
 extern FBI fbinfo;
@@ -45,6 +47,16 @@ void NotOkLoop()
 
 int cmain()
 {
+    // uint vectbl;
+
+    curr_cpu = &cpus[0];
+
+    uartinit(BAUDRATE);
+
+    consoleinit ();             // console
+
+    led_flash(500000, 1); // debug
+
     // mailboxinit();
     // create_request(mailbuffer, MPI_TAG_GET_ARM_MEMORY, 8, 0, 0);
     // writemailbox((uint *)mailbuffer, 8);
@@ -56,25 +68,40 @@ int cmain()
     //         mailbuffer[MB_HEADER_LENGTH + TAG_HEADER_LENGTH],
     //         mailbuffer[MB_HEADER_LENGTH + TAG_HEADER_LENGTH + 1]
     //     );
-    uint vectbl;
+    RPI_PropertyInit();
+    RPI_PropertyAddTag( TAG_GET_ARM_MEMORY );
+    RPI_PropertyProcess();
+    rpi_mailbox_property_t* mp;
+    mp = RPI_PropertyGet( TAG_GET_ARM_MEMORY );
 
-    curr_cpu = &cpus[0];
+    /* reference:
+        https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface
+     */
+    if ( mp ) {
+        cprintf( "MEMORY:\r\n" );
+        cprintf( "Base address: 0x%x\r\n", mp->data.buffer_32[0] );
+        cprintf( "Size: %d byte\r\n", mp->data.buffer_32[1] );
+    } else {
+        cprintf( "Mailbox error\r\n" );
+    }
 
-    uartinit(BAUDRATE);
-
-    vectbl = P2V_WO ((HVECTORS & PDE_MASK) + PA_START);
+    // interrrupt vector table is in the middle of first 1MB. We use the left
+    // over for page tables
+    // vectbl = P2V_WO ((HVECTORS & PDE_MASK) + PA_START);
 
     init_vmm ();
-    kpt_freerange (align_up(&end, PT_SZ), vectbl);
-    kpt_freerange (vectbl + PT_SZ, P2V_WO(INIT_KERNMAP));
-    paging_init (INIT_KERNMAP, PHYSTOP);
+    // kpt_freerange (align_up(&end, PT_SZ), vectbl);
+    // kpt_freerange (vectbl + PT_SZ, P2V_WO(INIT_KERNMAP));
+    kpt_freerange (align_up(&end, PT_SZ), P2V_WO(INIT_KERNMAP));
+    paging_init (INIT_KERNMAP, PA_STOP);
 
     kmem_init ();
-    kmem_init2(P2V(INIT_KERNMAP), P2V(PHYSTOP));
+    cprintf("it is ok after kmem_init\n");
+    kmem_init2(P2V(INIT_KERNMAP), P2V(PA_STOP));
+    cprintf("it is ok after kmem_init2\n");
 
     trap_init ();               // vector table and stacks for models
-
-    consoleinit ();             // console
+    cprintf("it is ok after trap_init\n");
 
     pinit();
     cprintf("it is ok after pinit\n");
@@ -87,6 +114,7 @@ int cmain()
     ideinit();
     cprintf("it is ok after ideinit\n");
     timer3init();
+    cprintf("it is ok after timer3init\n");
 
     sti ();
     userinit();

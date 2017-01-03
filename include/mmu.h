@@ -94,8 +94,6 @@ extern uint32 _user_pgtbl;
 #define PTX_AP(ap) 		(ACCESS_PERM(3, (ap)) | ACCESS_PERM(2, (ap)) \
 				| ACCESS_PERM(1, (ap)) | ACCESS_PERM(0, (ap)))
 
-#define HVECTORS        0xffff0000
-
 // A virtual address 'la' has a three-part structure as follows:
 //
 // +--------12------+-------8--------+---------12----------+

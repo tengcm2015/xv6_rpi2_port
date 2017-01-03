@@ -4,14 +4,13 @@
 #include "arm.h"
 #include "defs.h"
 
-uint32 *kernel_pgtbl = &_kernel_pgtbl;
-uint32 *user_pgtbl = &_user_pgtbl;
+// uint32 *kernel_pgtbl = (uint32*)V2P(&_kernel_pgtbl);
+static uint32 *kernel_pgtbl = (uint32*)0x4000;
+static uint32 *user_pgtbl = (uint32*)V2P(&_user_pgtbl);
+// uint32 *kernel_pgtbl = V2P_WO(&_kernel_pgtbl);
+// uint32 *user_pgtbl = V2P_WO(&_user_pgtbl);
 
-uint32 get_pde (uint32 virt)
-{
-    virt >>= PDE_SHIFT;
-    return kernel_pgtbl[virt];
-}
+// static void set_test_pgtbl (void);
 
 // setup the boot page table: dev_mem whether it is device memory
 void set_bootpgtbl (uint32 virt, uint32 phy, uint len, int dev_mem )
@@ -143,14 +142,17 @@ void start (void)
     // }
     // V, P, len, is_mem
     set_bootpgtbl(HVECTORS, PA_START, 1 << PDE_SHIFT, 1); // V, P, SZ, ISDEV
-    set_bootpgtbl(GPUMEMBASE, GPUMEMBASE, GPUMEMSIZE, 1); // V, P, SZ, ISDEV
     // set_bootpgtbl(VEC_TBL, PHY_START, 1 << PDE_SHIFT, 0); // V, P, SZ, ISDEV
-    // set_bootpgtbl(DEVBASE1, DEVBASE1, DEV_MEM_SZ, 1); // V, P, SZ, ISDEV: add to prevent crash on _puts
-    // set_bootpgtbl(KERNBASE+DEVBASE1, DEVBASE1, DEV_MEM_SZ, 1); // V, P, SZ, ISDEV
-    // set_bootpgtbl(KERNBASE+DEVBASE2, DEVBASE2, DEV_MEM_SZ, 1); // V, P, SZ, ISDEV
+
+    // cannot map this for some reason...
+    // set_bootpgtbl(GPUMEMBASE, GPUMEMBASE, GPUMEMSIZE, 1); // V, P, SZ, ISDEV
+
     set_bootpgtbl(DEVSPACE, PHYSIO, DEV_MEM_SZ, 1); // V, P, SZ, ISDEV
 
+    // set_test_pgtbl();
+    // led_flash_no_map(500000, 3);
     load_pgtlb (kernel_pgtbl, user_pgtbl);
+
     jump_stack ();
 
     // We can now call normal kernel functions at high memory
@@ -158,3 +160,27 @@ void start (void)
 
     cmain ();
 }
+
+// static void set_test_pgtbl (void)
+// {
+//     uint pa = 0x00100000;
+//     uint va = 0x80100000;
+//     // uint *kpgdir = (uint*)V2P(&_kernel_pgtbl);
+//     uint *kpgdir = kernel_pgtbl;
+//     // uint32 *kpgdir = (uint32*)0x4000;
+//     // uint *upgdir = V2P_WO(&_user_pgtbl);
+//     // uint *pgtab = (uint*)0x00010000;
+//     // int ap = AP_KO;
+//
+//     uint *pde = &kpgdir[PDE_IDX(va)];
+//     *pde = pa | (AP_KO << 10) | PE_CACHE | PE_BUF | KPDE_TYPE;
+//     // *pde = (uint)pgtab | UPDE_TYPE;
+//     // uint *pte = &pgtab[PTE_IDX(va)];
+//     // *pte = pa | ((ap & 0x3) << 4) | PE_CACHE | PE_BUF | PTE_TYPE;
+//
+//     uint *pde2 = &kpgdir[PDE_IDX(pa)];
+//     *pde2 = pa | (AP_KO << 10) | PE_CACHE | PE_BUF | KPDE_TYPE;
+//     // *pde2 = (uint)pgtab | UPDE_TYPE;
+//     // uint *pte2 = &pgtab[PTE_IDX(pa)];
+//     // *pte2 = pa | ((ap & 0x3) << 4) | PE_CACHE | PE_BUF | PTE_TYPE;
+// }

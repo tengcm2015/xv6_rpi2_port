@@ -20,7 +20,7 @@
 #define N_ORD        (MAX_ORD - MIN_ORD +1)
 
 struct mark {
-    uint32  lnks;       // double links (actually indexes) 
+    uint32  lnks;       // double links (actually indexes)
     uint32  bitmap;     // bitmap, whether the block is available (1=available)
 };
 
@@ -78,7 +78,7 @@ void kmem_init2(void *vstart, void *vend)
     uint            len;
     struct order    *ord;
     struct mark     *mk;
-    
+
     kmem.start = (uint)vstart;
     kmem.end   = (uint)vend;
     len = kmem.end - kmem.start;
@@ -86,12 +86,12 @@ void kmem_init2(void *vstart, void *vend)
     // reserved memory at vstart for an array of marks (for all the orders)
     n = (len >> (MAX_ORD + 5)) + 1; // estimated # of marks for max order
     total = 0;
-    
+
     for (i = N_ORD - 1; i >= 0; i--) {
         ord = kmem.orders + i;
         ord->offset = total;
         ord->head = NIL;
-        
+
         // set the bitmaps to mark all blocks not available
         for (j = 0; j < n; j++) {
             mk = get_mark(i + MIN_ORD, j);
@@ -105,7 +105,7 @@ void kmem_init2(void *vstart, void *vend)
 
     // add all available memory to the highest order bucket
     kmem.start_heap = align_up(kmem.start + total * sizeof(*mk), 1 << MAX_ORD);
-    
+
     for (i = kmem.start_heap; i < kmem.end; i += (1 << MAX_ORD)){
         kfree ((void*)i, MAX_ORD);
     }
@@ -127,18 +127,18 @@ static void unmark_blk (int order, int blk_id)
     }
 
     mk->bitmap &= ~(1 << (blk_id & 0x1F));
-    
+
     // if it's the last block in the bitmap, delete from the list
     if (mk->bitmap == 0) {
         blk_id >>= 5;
-        
+
         prev = PRE_LNK(mk->lnks);
         next = NEXT_LNK(mk->lnks);
 
         if (prev != NIL) {
             p = get_mark(order, prev);
             p->lnks = LNKS(PRE_LNK(p->lnks), next);
-            
+
         } else if (ord->head == blk_id) {
             // if we are the first in the link
             ord->head = next;
@@ -159,7 +159,7 @@ static void mark_blk (int order, int blk_id)
     struct mark     *mk, *p;
     struct order    *ord;
     int             insert;
-    
+
     ord = &kmem.orders[order - MIN_ORD];
     mk  = get_mark (order, blk_id >> 5);
 
@@ -170,9 +170,9 @@ static void mark_blk (int order, int blk_id)
     if (available(mk->bitmap, blk_id)) {
         panic ("double free\n");
     }
-    
+
     mk->bitmap |= (1 << (blk_id & 0x1F));
-    
+
     // just insert it to the head, no need to keep the list ordered
     if (insert) {
         blk_id >>= 5;
@@ -183,7 +183,7 @@ static void mark_blk (int order, int blk_id)
             p = get_mark(order, ord->head);
             p->lnks = LNKS(blk_id, NEXT_LNK(p->lnks));
         }
-        
+
         ord->head = blk_id;
     }
 }
@@ -207,7 +207,7 @@ static void* get_blk (int order)
         if (mk->bitmap & (1 << i)) {
             blk_id = ord->head * 32 + i;
             unmark_blk(order, blk_id);
-            
+
             return blkid2mem(order, blk_id);
         }
     }
@@ -225,10 +225,10 @@ static void *_kmalloc (int order)
 
     ord = &kmem.orders[order - MIN_ORD];
     up  = NULL;
-    
+
     if (ord->head != NIL) {
         up = get_blk(order);
-        
+
     } else if (order < MAX_ORD){
         // if currently no block available, try to split a parent
         up = _kmalloc (order + 1);
@@ -310,7 +310,7 @@ void* alloc_page (void)
 int get_order (uint32 v)
 {
     uint32 ord;
-    
+
     v--;
     v |= v >> 1;
     v |= v >> 2;
@@ -324,14 +324,13 @@ int get_order (uint32 v)
             break;
         }
     }
-    
+
     if (ord < MIN_ORD) {
         ord = MIN_ORD;
     } else if (ord > MAX_ORD) {
         panic ("order too big!");
     }
-    
+
     return ord;
 
 }
-

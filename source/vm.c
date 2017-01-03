@@ -95,7 +95,8 @@ static pte_t* walkpgdir (pde_t *pgdir, const void *va, int alloc)
     pde = &pgdir[PDE_IDX(va)];
 
     if (*pde & PE_TYPES) {
-        pgtab = (pte_t*) p2v(PT_ADDR(*pde));
+        pgtab = (pte_t*)PT_ADDR(*pde);
+        // cprintf("walkpgdir: found pde: %x\n      AT: %x\n", *pde, pde);
 
     } else {
         if (!alloc || (pgtab = (pte_t*) kpt_alloc()) == 0) {
@@ -108,7 +109,8 @@ static pte_t* walkpgdir (pde_t *pgdir, const void *va, int alloc)
         // The permissions here are overly generous, but they can
         // be further restricted by the permissions in the page table
         // entries, if necessary.
-        *pde = v2p(pgtab) | UPDE_TYPE;
+        *pde = (uint)V2P(pgtab) | UPDE_TYPE;
+        // cprintf("walkpgdir: created pde: %x\n      AT: %x\n", *pde, pde);
     }
 
     return &pgtab[PTE_IDX(va)];
@@ -135,6 +137,7 @@ static int mappages (pde_t *pgdir, void *va, uint size, uint pa, int ap)
         }
 
         *pte = pa | ((ap & 0x3) << 4) | PE_CACHE | PE_BUF | PTE_TYPE;
+        // cprintf("mappages: created pte: %x\n      AT: %x\n", *pte, pte);
 
         if (a == last) {
             break;
@@ -154,8 +157,10 @@ static void flush_tlb (void)
     asm("MCR p15, 0, %[r], c8, c7, 0" : :[r]"r" (val):);
 
     // invalid entire data and instruction cache
-    asm ("MCR p15,0,%[r],c7,c10,0": :[r]"r" (val):);
-    asm ("MCR p15,0,%[r],c7,c11,0": :[r]"r" (val):);
+    // asm ("MCR p15,0,%[r],c7,c10,0": :[r]"r" (val):);
+    // asm ("MCR p15,0,%[r],c7,c11,0": :[r]"r" (val):);
+    asm ("MCR p15,0,%[r],c7,c10,1": :[r]"r" (val):);
+    asm ("MCR p15,0,%[r],c7,c11,1": :[r]"r" (val):);
 }
 
 // Switch to the user page table (TTBR0)
@@ -442,6 +447,6 @@ int copyout (pde_t *pgdir, uint va, void *p, uint len)
 // mapped as 4KB pages
 void paging_init (uint phy_low, uint phy_hi)
 {
-    mappages (P2V(&_kernel_pgtbl), P2V(phy_low), phy_hi - phy_low, phy_low, AP_KU);
+    mappages (&_kernel_pgtbl, P2V(phy_low), phy_hi - phy_low, phy_low, AP_KU);
     flush_tlb ();
 }

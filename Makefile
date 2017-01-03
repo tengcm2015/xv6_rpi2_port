@@ -34,12 +34,14 @@ LIBRARIES := csud
 # CFLAGS += -ggdb -Werror -fno-omit-frame-pointer -nostdinc -nostdlib
 # CFLAGS += -fno-stack-protector
 CFLAGS := -fno-pic -static -Wno-packed-bitfield-compat
-CFLAGS += -fno-builtin -fno-strict-aliasing -fshort-wchar -O2 -Wall -MD
+CFLAGS += -fno-builtin -fno-strict-aliasing -fshort-wchar -Wall -MD
 CFLAGS += -ggdb -Werror -fno-omit-frame-pointer -fno-stack-protector
 
 # CFLAGS += -mfpu=vfp -mfloat-abi=hard -march=armv6zk -mtune=arm1176jzf-s
 # uncomment this line for rpi2
-CFLAGS += -DRPI2 -mfpu=neon-vfpv4 -mfloat-abi=hard -march=armv7-a -mtune=cortex-a7
+CFLAGS += -DRPI2 -mfpu=neon-vfpv4 -mfloat-abi=hard -march=armv7-a
+# CFLAGS += -mtune=cortex-a7
+CFLAGS += -O0
 
 # -fno-short-enums: stops error msg
 # uses variable-size enums yet the output is to use 32-bit enums;
