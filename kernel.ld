@@ -40,7 +40,7 @@ SECTIONS {
 
         PROVIDE (svc_stktop = .);
 
-        /* define the kernel page table, must be 16K and 16K-aligned*/
+        /* define the kernel page table, must be 16K=0x4000 and 16K-aligned*/
         . = ALIGN(0x4000);
         PROVIDE (_kernel_pgtbl = .);
         . += 0x4000;

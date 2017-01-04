@@ -4,7 +4,10 @@
 #include "arm.h"
 #include "defs.h"
 
-// static void set_test_pgtbl (void);
+// this code mainly runs in low address,
+// and since we linked whole code at high address,
+// we cannot use global variables here because GVs
+// use absolute reference in asm
 
 // setup the boot page table: dev_mem whether it is device memory
 void set_bootpgtbl (uint32 virt, uint32 phy, uint len, int dev_mem )

@@ -8,11 +8,54 @@
 #include "rpi_aux.h"
 
 // extern void set_test_pgtbl();
-// extern uint32 *kernel_pgtbl;
-static uint32 *kernel_pgtbl = &_kernel_pgtbl;
-// static uint32 *kernel_pgtbl = (uint32*)V2P(&_kernel_pgtbl);
-// static uint32 *kernel_pgtbl = (uint32*)0x4000;
-// static uint32 *user_pgtbl = (uint32*)V2P(&_user_pgtbl);
+// static uint32 *kernel_pgtbl = &_kernel_pgtbl;
+// static uint32 *user_pgtbl = &_user_pgtbl;
+
+static void _flush_all (void)
+{
+    uint val = 0;
+
+    // flush all TLB
+    asm("MCR p15, 0, %[r], c8, c7, 0" : :[r]"r" (val):);
+
+    // invalid and clean entire data and instruction cache
+    asm ("MCR p15, 0, %[r], c7, c5, 0": :[r]"r" (val):);
+    asm ("MCR p15, 0, %[r], c7, c14, 1": :[r]"r" (val):);
+}
+
+// void test_cpsr() {
+//     uint	val;
+//     // asm("MRC p15, 0, %[r], c1, c1, 0": [r]"=r" (val)::);
+//     asm("MRS %[r], CPSR": [r]"=r" (val)::);
+//     if ((val & MODE_MASK) == SVC_MODE) {
+//         led_flash(500000, 5);
+//     } else {
+//         led_flash(100000, 10);
+//     }
+// }
+static void set_test_pgtbl (void)
+{
+    uint *pde, *pte;
+    uint pa = 0x00100000;
+    uint va = 0x80100000;
+    uint *kpgdir = &_kernel_pgtbl;
+    uint *upgdir = &_user_pgtbl;
+    uint *pgtab = (uint*)0x00010000;
+    int ap = AP_KO;
+
+    pde = &kpgdir[PDE_IDX(va)];
+    // *pde = pa | (AP_KO << 10) | PE_CACHE | PE_BUF | KPDE_TYPE;
+    *pde = (uint)pgtab | UPDE_TYPE;
+    pte = &pgtab[PTE_IDX(va)];
+    *pte = pa | ((ap & 0x3) << 4) | PE_CACHE | PE_BUF | PTE_TYPE;
+
+    pde = &upgdir[PDE_IDX(pa)];
+    // *pde = pa | (AP_KO << 10) | PE_CACHE | PE_BUF | KPDE_TYPE;
+    *pde = (uint)pgtab | UPDE_TYPE;
+    pte = &pgtab[PTE_IDX(pa)];
+    *pte = pa | ((ap & 0x3) << 4) | PE_CACHE | PE_BUF | PTE_TYPE;
+    _flush_all();
+}
 
 void test_rw() {
     int *addr;
@@ -47,40 +90,6 @@ void test_rw() {
     cprintf("test_rw done\n");
 }
 
-// void test_cpsr() {
-//     uint	val;
-//     // asm("MRC p15, 0, %[r], c1, c1, 0": [r]"=r" (val)::);
-//     asm("MRS %[r], CPSR": [r]"=r" (val)::);
-//     if ((val & MODE_MASK) == SVC_MODE) {
-//         led_flash(500000, 5);
-//     } else {
-//         led_flash(100000, 10);
-//     }
-// }
-static void set_test_pgtbl (void)
-{
-    uint pa = 0x00100000;
-    uint va = 0x80100000;
-    // uint *kpgdir = (uint*)V2P(&_kernel_pgtbl);
-    uint *kpgdir = kernel_pgtbl;
-    // uint32 *kpgdir = (uint32*)0x4000;
-    // uint *upgdir = V2P_WO(&_user_pgtbl);
-    // uint *pgtab = (uint*)0x00010000;
-    // int ap = AP_KO;
-
-    uint *pde = &kpgdir[PDE_IDX(va)];
-    *pde = pa | (AP_KO << 10) | PE_CACHE | PE_BUF | KPDE_TYPE;
-    // *pde = (uint)pgtab | UPDE_TYPE;
-    // uint *pte = &pgtab[PTE_IDX(va)];
-    // *pte = pa | ((ap & 0x3) << 4) | PE_CACHE | PE_BUF | PTE_TYPE;
-
-    uint *pde2 = &kpgdir[PDE_IDX(pa)];
-    *pde2 = pa | (AP_KO << 10) | PE_CACHE | PE_BUF | KPDE_TYPE;
-    // *pde2 = (uint)pgtab | UPDE_TYPE;
-    // uint *pte2 = &pgtab[PTE_IDX(pa)];
-    // *pte2 = pa | ((ap & 0x3) << 4) | PE_CACHE | PE_BUF | PTE_TYPE;
-}
-
 void test_paging() {
     cprintf("test_paging start\n");
 
@@ -90,21 +99,11 @@ void test_paging() {
     cprintf("test_paging done\n");
 }
 
-void test_addr() {
-    cprintf("test_addr start\n");
-    cprintf("_kernel_pgtbl: %x\n", _kernel_pgtbl);
-    cprintf("&_kernel_pgtbl: %x\n", &_kernel_pgtbl);
-    cprintf("kernel_pgtbl: %x\n", kernel_pgtbl);
-    cprintf("V2P(&_kernel_pgtbl): %x\n", V2P(&_kernel_pgtbl));
-    cprintf("test_addr start\n");
-}
-
 void
 test_main(void)
 {
     cprintf("test_main start\n");
 
-    test_addr();
     test_paging();
 
     cprintf("test_main done\n");

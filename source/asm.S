@@ -3,28 +3,28 @@
 .text
 .code 32
 
-@# set the stack for IRQ mode, we can use r0-r3 for free
-@# input: r0 - #mode, r1 - stk
+@ set the stack for IRQ mode, we can use r0-r3 for free
+@ input: r0 - #mode, r1 - stk
 .global set_stk
 set_stk:
-    @# switch to the mode stocked in r0
+    @ switch to the mode stocked in r0
     MRS     r2, cpsr
     BIC     r2, r2, #PSR_MASK
     ORR     r2, r2, r0
     MSR     cpsr_cxsf, r2
 
-    @# set the stack pointer, sp register is banked, so we need to switch mode
+    @ set the stack pointer, sp register is banked, so we need to switch mode
     MOV     sp, r1
 
-    @# switch back to the SVC mode
+    @ switch back to the SVC mode
     BIC     r2, r2, #PSR_MASK
     ORR     r2, r2, #PSR_MODE_SVC
     MSR     cpsr_cxsf, r2
 
-    @# return
+    @ return
     bx      lr
 
-@# return the frame pointer for the current function
+@ return the frame pointer for the current function
 .global get_fp
 get_fp:
     MOV     r0, fp
