@@ -143,6 +143,4 @@ void start (void)
 
     // We can now call normal kernel functions at high memory
     clear_bss ();
-
-    cmain ();
 }

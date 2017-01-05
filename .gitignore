@@ -2,3 +2,4 @@ build/
 kernel.img
 kernel.list
 kernel.map
+fs.img

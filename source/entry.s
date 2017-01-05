@@ -128,6 +128,10 @@ _start:
     BNE     smp
 
     BL      start
+
+    @ start execution at high address
+    LDR     pc, =cmain
+
     BL      NotOkLoop
 
 @===================================================================
