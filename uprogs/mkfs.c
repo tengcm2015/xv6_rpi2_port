@@ -11,6 +11,9 @@
 #include "stat.h"
 #include "param.h"
 
+#ifdef static_assert
+#undef static_assert
+#endif
 #define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
 
 int nblocks = 985;
@@ -124,7 +127,7 @@ main(int argc, char *argv[])
       perror(argv[i]);
       exit(1);
     }
-    
+
     // Skip leading _ in name when writing to file system.
     // The binaries are named _rm, _cat, etc. to keep the
     // build operating system from trying to execute them
