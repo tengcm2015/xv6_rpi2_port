@@ -139,8 +139,6 @@ void start (void)
     // set_test_pgtbl();
     load_pgtlb (kernel_pgtbl, user_pgtbl);
 
-    jump_stack ();
-
     // We can now call normal kernel functions at high memory
     clear_bss ();
 }

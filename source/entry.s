@@ -122,28 +122,27 @@ _start:
     @===================================================================
     @ smp cores
     @===================================================================
-    MRC     p15, 0, r0, c0, c0, 5   @ MPIDR
-    MOV     r1, #0xFF
-    ANDS    r1, r1, r0
+    MRC     p15, 0, r1, c0, c0, 5   @ MPIDR
+    MOV     r0, #0xFF
+    ANDS    r0, r0, r1
     BNE     smp
 
     BL      start
 
-    @ start execution at high address
-    LDR     pc, =cmain
-
-    BL      NotOkLoop
-
-@===================================================================
-@ during startup, kernel stack uses user address,
-@ now switch it to kernel addr
-@===================================================================
-.global jump_stack
-jump_stack:
+    @===================================================================
+    @ during startup, kernel stack uses user address,
+    @ now switch it to kernel addr
+    @===================================================================
     MOV     r0, sp
     ADD     r0, r0, #KERNBASE
     MOV     sp, r0
-    MOV     pc, lr
+
+    @===================================================================
+    @ start execution at high address
+    @===================================================================
+    LDR     pc, =cmain
+
+    BL      NotOkLoop
 
 @===================================================================
 @ smp cores
