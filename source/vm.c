@@ -450,3 +450,8 @@ void paging_init (uint phy_low, uint phy_hi)
     mappages (&_kernel_pgtbl, P2V(phy_low), phy_hi - phy_low, phy_low, AP_KU);
     flush_tlb ();
 }
+
+void map_vectors(uint vector_start) {
+    mappages (&_kernel_pgtbl, (void*)HVECTORS, PTE_SZ, vector_start, AP_KO);
+    flush_tlb ();
+}

@@ -241,6 +241,7 @@ void*           kpt_alloc(void);
 void            init_vmm (void);
 void            kpt_freerange (uint32 low, uint32 hi);
 void            paging_init (uint phy_low, uint phy_hi);
+void            map_vectors (uint vector_start);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

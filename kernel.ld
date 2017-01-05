@@ -16,6 +16,8 @@ SECTIONS {
     */
     .init 0x80000000 : AT(0x0) {
         build/entry.o(.vectors)
+
+        . = ALIGN(0x1000);
         build/entry.o(.text)
         build/start.o(.text .text.*)
 

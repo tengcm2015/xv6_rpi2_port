@@ -130,7 +130,7 @@ void start (void)
     // }
     // V, P, len, is_mem
     // set_bootpgtbl(VEC_TBL, PHY_START, 1 << PDE_SHIFT, 0); // V, P, SZ, ISDEV
-    set_bootpgtbl(HVECTORS, PA_START, 1 << PDE_SHIFT, 0); // V, P, SZ, ISDEV
+    // set_bootpgtbl(HVECTORS, PA_START, 1 << PDE_SHIFT, 0); // V, P, SZ, ISDEV
 
     set_bootpgtbl(GPUMEMBASE, GPUMEMBASE, GPUMEMSIZE, 1); // V, P, SZ, ISDEV
 

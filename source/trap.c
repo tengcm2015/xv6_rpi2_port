@@ -128,7 +128,7 @@ void fiq_handler (struct trapframe *r)
 
 // low-level init code: in real hardware, lower memory is usually mapped
 // to flash during startup, we need to remap it to SDRAM
-void trap_init ( )
+void trap_init (void)
 {
     volatile uint32 *ram_start;
     char *stk;
@@ -140,9 +140,12 @@ void trap_init ( )
     , PSR_MODE_UND
     };
 
+    // map interrupt vectors
+    map_vectors(PA_START);
+
     // set the reset vector to point to real reset handler
     ram_start = (uint32*)HVECTORS;
-    ram_start[8]  = (uint32)trap_reset;
+    ram_start[8] = (uint32)trap_reset;
 
     // initialize the stacks for different mode
     for (i = 0; i < sizeof(modes)/sizeof(uint); i++) {
