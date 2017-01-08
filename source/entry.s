@@ -13,7 +13,7 @@ vectors:
     ldr pc, irq_handler
     ldr pc, fiq_handler
 reset_handler:
-    .word V2P_WO(_start)       /* reset, in svc mode already */
+    .word V2P_WO(entry)       /* reset, in svc mode already */
 undefintr_handler:
     .word trap_und             /* undefined instruction */
 swi_handler:
@@ -30,8 +30,8 @@ fiq_handler:
     .word trap_fiq             /* FIQ */
 
 .section .text
-.global _start
-_start:
+.global entry
+entry:
     @==================================================================
     @ Disable caches, MMU and branch prediction in case they were left enabled from an earlier run
     @ This does not need to be done from a cold reset
@@ -127,7 +127,7 @@ _start:
     ANDS    r0, r0, r1
     BNE     smp
 
-    BL      start
+    BL      init_mmu
 
     @===================================================================
     @ during startup, kernel stack uses user address,
@@ -140,7 +140,7 @@ _start:
     @===================================================================
     @ start execution at high address
     @===================================================================
-    LDR     pc, =cmain
+    LDR     pc, =kmain
 
     BL      NotOkLoop
 

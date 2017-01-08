@@ -60,8 +60,12 @@ static void _flush_all (void)
 
 void load_pgtlb (uint32* kern_pgtbl, uint32* usr_pgtbl)
 {
-    uint	val;
+    uint    val;
     // we need to check the cache/tlb etc., but let's skip it for now
+    // set SMP bit in ACTLR
+    asm("MRC p15, 0, %[r], c1, c0, 1": [r]"=r" (val)::);
+    val |= 1 << 6;
+    asm("MCR p15, 0, %[v], c1, c0, 1": :[v]"r" (val):);
 
     // set domain access control: all domain will be checked for permission
     val = 0x55555555;
@@ -86,13 +90,17 @@ void load_pgtlb (uint32* kern_pgtbl, uint32* usr_pgtbl)
     val = (uint)usr_pgtbl;
     asm("MCR p15, 0, %[v], c2, c0, 0": :[v]"r" (val):);
 
+    asm("ISB" ::: "memory");
+
     // ok, enable paging using read/modify/write
     asm("MRC p15, 0, %[r], c1, c0, 0": [r]"=r" (val)::);
 
-    // enable MMU, cache, write buffer, high vector tbl,
-    // disable subpage
+    // enable MMU, D/U-cache, branch prediction, I-cache, high vector tbl
+    // val |= 1 | (1 << 2) | (1 << 11) | (1 << 12) | (1 << 13);
     // val |= 0x80300D;
-    val |= 1 | (1 << 2) | (1 << 12) | (1 << 13);
+    // for some reason ACTLR.SMP doesn't work with data cache...
+    val |= 1 | (1 << 11) | (1 << 12) | (1 << 13);
+    // val |= 1 | (1 << 13);
 
     // led_flash_no_map(500000, 1);
     asm("MCR p15, 0, %[r], c1, c0, 0": :[r]"r" (val):);
@@ -108,9 +116,7 @@ void clear_bss (void)
     memset(&edata, 0x00, (uint)&end-(uint)&edata);
 }
 
-extern void jump_stack (void);
-extern int cmain(void);
-void start (void)
+void init_mmu (void)
 {
     uint32 *kernel_pgtbl = (uint32*)V2P(&_kernel_pgtbl);
     uint32 *user_pgtbl = (uint32*)V2P(&_user_pgtbl);

@@ -45,7 +45,8 @@ void NotOkLoop()
     }
 }
 
-int cmain()
+extern void test_main(void);
+void kmain (void)
 {
     // uint vectbl;
 
@@ -55,7 +56,7 @@ int cmain()
 
     consoleinit ();             // console
 
-    led_flash(500000, 1); // debug
+    // led_flash(500000, 1); // debug
 
     // mailboxinit();
     // create_request(mailbuffer, MPI_TAG_GET_ARM_MEMORY, 8, 0, 0);
@@ -94,34 +95,35 @@ int cmain()
     // kpt_freerange (vectbl + PT_SZ, P2V_WO(INIT_KERNMAP));
     kpt_freerange (align_up(&end, PT_SZ), P2V_WO(INIT_KERNMAP));
     paging_init (INIT_KERNMAP, PA_STOP);
+    // cprintf("it is ok after paging_init\n");
 
     kmem_init ();
-    cprintf("it is ok after kmem_init\n");
+    // cprintf("it is ok after kmem_init\n");
     kmem_init2(P2V(INIT_KERNMAP), P2V(PA_STOP));
-    cprintf("it is ok after kmem_init2\n");
+    // cprintf("it is ok after kmem_init2\n");
 
     trap_init ();               // vector table and stacks for models
-    cprintf("it is ok after trap_init\n");
+    // cprintf("it is ok after trap_init\n");
+
+    // test_main();
 
     pinit();
-    cprintf("it is ok after pinit\n");
+    // cprintf("it is ok after pinit\n");
     binit();
-    cprintf("it is ok after binit\n");
+    // cprintf("it is ok after binit\n");
     fileinit();
-    cprintf("it is ok after fileinit\n");
+    // cprintf("it is ok after fileinit\n");
     iinit();
-    cprintf("it is ok after iinit\n");
+    // cprintf("it is ok after iinit\n");
     ideinit();
-    cprintf("it is ok after ideinit\n");
+    // cprintf("it is ok after ideinit\n");
     timer3init();
-    cprintf("it is ok after timer3init\n");
+    // cprintf("it is ok after timer3init\n");
 
     sti ();
     userinit();
-    cprintf("it is ok after userinit\n");
+    // cprintf("it is ok after userinit\n");
     scheduler();
 
     NotOkLoop();
-
-    return 0;
 }

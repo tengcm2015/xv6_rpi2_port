@@ -30,8 +30,11 @@ void            show_callstk(char *);
 // asm.S
 void            set_stk(uint mode, uint addr);
 void*           get_fp(void);
+void*           get_sp(void);
+uint            get_cpunum(void);
 void            enable_interrupts(void);
-void            flush_dcache_all(void);
+// void            invalidate_dcache_all(void);
+void            clean_inval_dcache_all(void);
 
 // bio.c
 void            binit(void);
@@ -49,6 +52,11 @@ void*           alloc_page (void);
 void            kmem_test_b (void);
 int             get_order (uint32 v);
 
+// cache.c
+void            flush_dcache_all(void);
+void            invalidate_icache_all(void);
+void            invalidate_tlb (void);
+
 // console.c
 void            consoleinit(void);
 void            cprintf(char*, ...);
@@ -56,26 +64,6 @@ void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
 void            drawcharacter(uint8, uint, uint);
 void            gpuputc(uint);
-
-
-// fs.c
-void            readsb(int dev, struct superblock *sb);
-int             dirlink(struct inode*, char*, uint);
-struct inode*   dirlookup(struct inode*, char*, uint*);
-struct inode*   ialloc(uint, short);
-struct inode*   idup(struct inode*);
-void            iinit(void);
-void            ilock(struct inode*);
-void            iput(struct inode*);
-void            iunlock(struct inode*);
-void            iunlockput(struct inode*);
-void            iupdate(struct inode*);
-int             namecmp(const char*, const char*);
-struct inode*   namei(char*);
-struct inode*   nameiparent(char*, char*);
-int             readi(struct inode*, char*, uint, uint);
-void            stati(struct inode*, struct stat*);
-int             writei(struct inode*, char*, uint, uint);
 
 
 // ide.c
@@ -150,7 +138,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-
+void            dump_context (struct context *c);
+void            procdump(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

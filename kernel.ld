@@ -1,6 +1,6 @@
 OUTPUT_FORMAT("elf32-littlearm")
 OUTPUT_ARCH(arm)
-ENTRY(_start)
+ENTRY(entry)
 
 ENTRY_SVC_STACK_SIZE = 0x1000;
 
@@ -78,7 +78,7 @@ SECTIONS {
     .data : {
         . = ALIGN(4);
         PROVIDE(font = .);
-        build/font.o
+        build/font
 
         *(.data)
         *.c.o(*)
@@ -93,7 +93,7 @@ SECTIONS {
     .ramdisk : {
         . = ALIGN(4);
         PROVIDE(_binary_fs_img_start = .);
-        build/ramdisk.o
+        build/ramdisk
         PROVIDE(_binary_fs_img_end = .);
     }
 

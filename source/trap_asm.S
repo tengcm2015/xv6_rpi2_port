@@ -37,7 +37,7 @@ trapret:
     LDMFD   r13!, {r2}          // restore spsr
     MSR     spsr_cxsf, r2
     LDMFD   r13!,{r0-r12, pc}^  // restore context and return
-
+    // LDMFD^ with pc will automatically store spsr into cpsr
 
 @ handle IRQ, we allow nested IRQs
 trap_irq:

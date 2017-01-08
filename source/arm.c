@@ -7,19 +7,6 @@
 #include "arm.h"
 #include "mmu.h"
 
-uint inw(uint addr)
-{
-    uint data;
-
-    asm volatile("ldr %0,[%1]" : "=r"(data) : "r"(addr));
-    return data;
-}
-
-void outw(uint addr, uint data)
-{
-    asm volatile("str %1,[%0]" : : "r"(addr), "r"(data));
-}
-
 void cli (void)
 {
     uint val;

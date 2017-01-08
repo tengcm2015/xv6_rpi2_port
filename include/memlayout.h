@@ -12,7 +12,7 @@
 
 // Memory layout
 #define PA_START        0x0
-#define RAMSIZE         0x08000000
+#define RAMSIZE         0x0C000000
 #define PA_STOP         (PA_START + RAMSIZE)
 #define PHYSIO          PERIPHERAL_BASE
 #define DEV_MEM_SZ      0x01000000

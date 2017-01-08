@@ -95,7 +95,7 @@ static pte_t* walkpgdir (pde_t *pgdir, const void *va, int alloc)
     pde = &pgdir[PDE_IDX(va)];
 
     if (*pde & PE_TYPES) {
-        pgtab = (pte_t*)PT_ADDR(*pde);
+        pgtab = (pte_t*)p2v(PT_ADDR(*pde));
         // cprintf("walkpgdir: found pde: %x\n      AT: %x\n", *pde, pde);
 
     } else {
@@ -153,14 +153,11 @@ static int mappages (pde_t *pgdir, void *va, uint size, uint pa, int ap)
 // flush all TLB
 static void flush_tlb (void)
 {
-    uint val = 0;
-    asm("MCR p15, 0, %[r], c8, c7, 0" : :[r]"r" (val):);
+    invalidate_tlb();
 
-    // invalid entire data and instruction cache
-    // asm ("MCR p15,0,%[r],c7,c10,0": :[r]"r" (val):);
-    // asm ("MCR p15,0,%[r],c7,c11,0": :[r]"r" (val):);
-    asm ("MCR p15,0,%[r],c7,c10,1": :[r]"r" (val):);
-    asm ("MCR p15,0,%[r],c7,c11,1": :[r]"r" (val):);
+    invalidate_icache_all();
+
+    flush_dcache_all();
 }
 
 // Switch to the user page table (TTBR0)
@@ -447,7 +444,7 @@ int copyout (pde_t *pgdir, uint va, void *p, uint len)
 // mapped as 4KB pages
 void paging_init (uint phy_low, uint phy_hi)
 {
-    mappages (&_kernel_pgtbl, P2V(phy_low), phy_hi - phy_low, phy_low, AP_KU);
+    mappages (&_kernel_pgtbl, p2v(phy_low), phy_hi - phy_low, phy_low, AP_KU);
     flush_tlb ();
 }
 

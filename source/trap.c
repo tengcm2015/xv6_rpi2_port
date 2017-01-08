@@ -163,6 +163,8 @@ void trap_init (void)
 
 void dump_trapframe (struct trapframe *tf)
 {
+    cprintf (" sp_usr: 0x%x\n", tf->sp_usr);
+    cprintf (" lr_usr: 0x%x\n", tf->lr_usr);
     cprintf ("r14_svc: 0x%x\n", tf->r14_svc);
     cprintf ("   spsr: 0x%x\n", tf->spsr);
     cprintf ("     r0: 0x%x\n", tf->r0);

@@ -50,7 +50,6 @@ struct context {
     uint    r11;
     uint    r12;
     uint    lr;
-    uint    pc;
 };
 
 

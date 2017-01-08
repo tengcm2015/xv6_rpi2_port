@@ -529,3 +529,17 @@ void procdump(void)
 
     show_callstk("procdump: \n");
 }
+
+void dump_context (struct context *c)
+{
+    cprintf ("     cr4: 0x%x\n", c->r4);
+    cprintf ("     cr5: 0x%x\n", c->r5);
+    cprintf ("     cr6: 0x%x\n", c->r6);
+    cprintf ("     cr7: 0x%x\n", c->r7);
+    cprintf ("     cr8: 0x%x\n", c->r8);
+    cprintf ("     cr9: 0x%x\n", c->r9);
+    cprintf ("    cr10: 0x%x\n", c->r10);
+    cprintf ("    cr11: 0x%x\n", c->r11);
+    cprintf ("    cr12: 0x%x\n", c->r12);
+    cprintf ("     clr: 0x%x\n", c->lr);
+}

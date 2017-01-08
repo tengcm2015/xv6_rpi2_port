@@ -30,6 +30,9 @@ LINKER = kernel.ld
 # The names of libraries to use.
 LIBRARIES := csud
 
+# The names of fs.img.
+FS_IMG := fs.img
+
 # CFLAGS := -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD
 # CFLAGS += -ggdb -Werror -fno-omit-frame-pointer -nostdinc -nostdlib
 # CFLAGS += -fno-stack-protector
@@ -56,7 +59,7 @@ CC := $(ARMGNU)-gcc
 # assembly code files in source.
 OBJECTS := $(patsubst $(SOURCE)%.S,$(BUILD)%.o,$(wildcard $(SOURCE)*.S))
 OBJECTS += $(patsubst $(SOURCE)%.c,$(BUILD)%.o,$(wildcard $(SOURCE)*.c))
-OBJECTS += $(BUILD)font.o $(BUILD)initcode.o $(BUILD)ramdisk.o
+OBJECTS += $(BUILD)ramdisk $(BUILD)font
 
 # Rule to make everything.
 all: $(TARGET) $(LIST)
@@ -77,18 +80,24 @@ $(TARGET) : $(BUILD)output.elf
 # this is for undefined reference to `__aeabi_idiv' error
 LIBOPTS := -L"/opt/local/lib/gcc/arm-none-eabi/5.1.0/" -lgcc
 LIBOPTS += -L. $(patsubst %,-l %,$(LIBRARIES))
-$(BUILD)output.elf : $(OBJECTS) $(LINKER)
-	$(ARMGNU)-ld --no-undefined $(OBJECTS) $(LIBOPTS) -Map $(MAP) -o $(BUILD)output.elf -T $(LINKER)
+
+$(BUILD)output.elf : $(LINKER) $(OBJECTS) $(BINARIES)
+	$(ARMGNU)-ld -T $(LINKER) -o $(BUILD)output.elf -Map $(MAP) \
+	             --no-undefined $(OBJECTS) $(LIBOPTS)
 
 # Rule to make the object files.
-$(BUILD)font.o: $(SOURCE)font1.bin
-	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $< $@
+$(BUILD)font: $(SOURCE)font1.bin
+	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $^ $@
 
-$(BUILD)ramdisk.o: fs.img
-	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $< $@
+$(BUILD)ramdisk: $(FS_IMG)
+	$(ARMGNU)-objcopy -I binary -O elf32-littlearm -B arm $^ $@
 
 # $(BUILD)%.o: $(SOURCE)%.s $(BUILD)
 # 	$(ARMGNU)-as -I $(SOURCE) $< -o $@
+
+$(BUILD)initcode.o: $(SOURCE)initcode.S $(BUILD)
+	$(CC) -I include -c $< -o $(BUILD)initcode.out
+	$(ARMGNU)-ld -N -s -e start -Ttext 0  -o $@  $(BUILD)initcode.out
 
 $(BUILD)%.o: $(SOURCE)%.S $(BUILD)
 	$(CC) -I include -c $<  -o $@
@@ -97,9 +106,18 @@ $(BUILD)%.o: $(SOURCE)%.c $(BUILD)
 	$(CC) -c $(CFLAGS) $<  -o $@
 
 $(BUILD):
-	mkdir $@
+	mkdir -p $@
+
+# Rule to make fs.
+$(FS_IMG): fs
+
+fs :
+	make -C uprogs
 
 # Rule to clean files.
+clean_fs:
+	make clean -C uprogs
+
 clean :
 	-rm -rf $(BUILD)
 	-rm -f $(TARGET)
