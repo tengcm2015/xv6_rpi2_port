@@ -1,141 +1,158 @@
-/*****************************************************************
-*       string.c
-*       adapted from MIT xv6 by Zhiyi Huang, hzy@cs.otago.ac.nz
-*       University of Otago
-*
-********************************************************************/
-
-
 #include "types.h"
 
-void*
-memsetw(int *dst, int c, uint n)
+void* memset(void *dst, int v, int n)
 {
-  int *p=dst;
-  uint rc=n;
+    uint8	*p;
+    uint8	c;
+    uint32	val;
+    uint32	*p4;
 
-  while (rc-- > 0) *p++ = c;
-  return (void *)p;
-}
+    p   = dst;
+    c   = v & 0xff;
+    val = (c << 24) | (c << 16) | (c << 8) | c;
 
-void*
-memsetb(char *dst, int c, uint n)
-{
-  char *p=dst; 
-  uint rc=n;
+    // set bytes before whole uint32
+    for (; (n > 0) && ((uint)p % 4); n--, p++){
+        *p = c;
+    }
 
-  while (rc-- > 0) *p++ = c;
-  return (void *)p;
-}
+    // set memory 4 bytes a time
+    p4 = (uint*)p;
 
+    for (; n >= 4; n -= 4, p4++) {
+        *p4 = val;
+    }
 
-void*
-memset(void *dst, int c, uint n)
-{
-  if ((int)dst%4 == 0 && n%4 == 0){
-    c &= 0xFF;
-    return memsetw((int *)dst, (c<<24)|(c<<16)|(c<<8)|c, n/4);
-  } else
-    return memsetb((char *)dst, c, n);
+    // set leftover one byte a time
+    p = (uint8*)p4;
+
+    for (; n > 0; n--, p++) {
+        *p = c;
+    }
+
+    return dst;
 }
 
 int
 memcmp(const void *v1, const void *v2, uint n)
 {
-  const uint8 *s1, *s2;
-  
-  s1 = v1;
-  s2 = v2;
-  while(n-- > 0){
-    if(*s1 != *s2)
-      return *s1 - *s2;
-    s1++, s2++;
-  }
+    const uchar *s1, *s2;
 
-  return 0;
+    s1 = v1;
+    s2 = v2;
+
+    while(n-- > 0){
+        if(*s1 != *s2) {
+            return *s1 - *s2;
+        }
+
+        s1++, s2++;
+    }
+
+    return 0;
 }
 
 void*
 memmove(void *dst, const void *src, uint n)
 {
-  const char *s;
-  char *d;
+    const char *s;
+    char *d;
 
-  s = src;
-  d = dst;
-  if(s < d && s + n > d){
-    s += n;
-    d += n;
-    while(n-- > 0)
-      *--d = *--s;
-  } else
-    while(n-- > 0)
-      *d++ = *s++;
+    s = src;
+    d = dst;
 
-  return dst;
+    if(s < d && s + n > d){
+        s += n;
+        d += n;
+
+        while(n-- > 0) {
+            *--d = *--s;
+        }
+
+    } else {
+        while(n-- > 0) {
+            *d++ = *s++;
+        }
+    }
+
+    return dst;
 }
 
 // memcpy exists to placate GCC.  Use memmove.
 void*
 memcpy(void *dst, const void *src, uint n)
 {
-  return memmove(dst, src, n);
+    return memmove(dst, src, n);
 }
 
 int
 strncmp(const char *p, const char *q, uint n)
 {
-  while(n > 0 && *p && *p == *q)
-    n--, p++, q++;
-  if(n == 0)
-    return 0;
-  return (uint8)*p - (uint8)*q;
+    while(n > 0 && *p && *p == *q) {
+        n--, p++, q++;
+    }
+
+    if(n == 0) {
+        return 0;
+    }
+
+    return (uchar)*p - (uchar)*q;
 }
 
 char*
 strncpy(char *s, const char *t, int n)
 {
-  char *os;
-  
-  os = s;
-  while(n-- > 0 && (*s++ = *t++) != 0)
-    ;
-  while(n-- > 0)
-    *s++ = 0;
-  return os;
+    char *os;
+
+    os = s;
+
+    while(n-- > 0 && (*s++ = *t++) != 0)
+        ;
+
+    while(n-- > 0) {
+        *s++ = 0;
+    }
+
+    return os;
 }
 
 // Like strncpy but guaranteed to NUL-terminate.
 char*
 safestrcpy(char *s, const char *t, int n)
 {
-  char *os;
-  
-  os = s;
-  if(n <= 0)
+    char *os;
+
+    os = s;
+
+    if(n <= 0) {
+        return os;
+    }
+
+    while(--n > 0 && (*s++ = *t++) != 0)
+        ;
+
+    *s = 0;
     return os;
-  while(--n > 0 && (*s++ = *t++) != 0)
-    ;
-  *s = 0;
-  return os;
 }
 
 int
 strlen(const char *s)
 {
-  int n;
+    int n;
 
-  for(n = 0; s[n]; n++)
-    ;
-  return n;
+    for(n = 0; s[n]; n++)
+        ;
+
+    return n;
 }
 
-uint div(uint n, uint d)  // long division
+uint
+div(uint n, uint d)  // long division
 {
     uint q=0, r=0;
     int i;
 
-    for(i=31;i>=0;i--){
+    for(i = 31; i >= 0; i--) {
         r = r << 1;
         r = r | ((n >> i) & 1);
         if(r >= d) {
@@ -145,4 +162,3 @@ uint div(uint n, uint d)  // long division
     }
     return q;
 }
-
