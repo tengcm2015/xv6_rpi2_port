@@ -9,6 +9,8 @@
 // we cannot use global variables here because GVs
 // use absolute reference in asm
 
+// maybe swap start code to low addr someday ...
+
 // setup the boot page table: dev_mem whether it is device memory
 void set_bootpgtbl (uint32 virt, uint32 phy, uint len, int dev_mem )
 {
@@ -63,9 +65,9 @@ void load_pgtlb (uint32* kern_pgtbl, uint32* usr_pgtbl)
     uint    val;
     // we need to check the cache/tlb etc., but let's skip it for now
     // set SMP bit in ACTLR
-    asm("MRC p15, 0, %[r], c1, c0, 1": [r]"=r" (val)::);
-    val |= 1 << 6;
-    asm("MCR p15, 0, %[v], c1, c0, 1": :[v]"r" (val):);
+    // asm("MRC p15, 0, %[r], c1, c0, 1": [r]"=r" (val)::);
+    // val |= 1 << 6;
+    // asm("MCR p15, 0, %[v], c1, c0, 1": :[v]"r" (val):);
 
     // set domain access control: all domain will be checked for permission
     val = 0x55555555;
@@ -108,6 +110,20 @@ void load_pgtlb (uint32* kern_pgtbl, uint32* usr_pgtbl)
     _flush_all();
 }
 
+void init_pgtbl(void)
+{
+    // interrupt vectors are mapped with small page at trapinit
+
+    // double map the low memory, required to enable paging
+    // we do not map all the physical memory
+    set_bootpgtbl(PA_START, PA_START, INIT_KERN_SZ, 0);
+    set_bootpgtbl(KERNBASE+PA_START, PA_START, INIT_KERN_SZ, 0);
+
+    set_bootpgtbl(GPUMEMBASE, GPUMEMBASE, GPUMEMSIZE, 1); // V, P, SZ, ISDEV
+
+    set_bootpgtbl(DEVSPACE, PHYSIO, DEV_MEM_SZ, 1); // V, P, SZ, ISDEV
+}
+
 extern void * edata;
 extern void * end;
 // clear the BSS section for the main kernel, see kernel.ld
@@ -116,35 +132,27 @@ void clear_bss (void)
     memset(&edata, 0x00, (uint)&end-(uint)&edata);
 }
 
-void init_mmu (void)
+void start (int cpunum)
 {
     uint32 *kernel_pgtbl = (uint32*)V2P(&_kernel_pgtbl);
     uint32 *user_pgtbl = (uint32*)V2P(&_user_pgtbl);
-    // uint32  vectbl;
 
-    // double map the low memory, required to enable paging
-    // we do not map all the physical memory
-    set_bootpgtbl(PA_START, PA_START, INIT_KERN_SZ, 0);
-    set_bootpgtbl(KERNBASE+PA_START, PA_START, INIT_KERN_SZ, 0);
+    static int mpwait = 1;
 
-    // vector table is in the middle of first 1MB (0xF000)
-    // vectbl = P2V_WO ((VEC_TBL & PDE_MASK) + PHY_START);
-    //
-    // if (vectbl <= (uint)&end) {
-    //     _puts("error: vector table overlap and cprintf() is 0x00000\n");
-    //     cprintf ("error: vector table overlaps kernel\n");
-    // }
-    // V, P, len, is_mem
-    // set_bootpgtbl(VEC_TBL, PHY_START, 1 << PDE_SHIFT, 0); // V, P, SZ, ISDEV
-    // set_bootpgtbl(HVECTORS, PA_START, 1 << PDE_SHIFT, 0); // V, P, SZ, ISDEV
+    if (cpunum == 0) {
+        init_pgtbl();
 
-    set_bootpgtbl(GPUMEMBASE, GPUMEMBASE, GPUMEMSIZE, 1); // V, P, SZ, ISDEV
+        load_pgtlb (kernel_pgtbl, user_pgtbl);
+        // We can now call normal kernel functions at high memory
+        clear_bss ();
 
-    set_bootpgtbl(DEVSPACE, PHYSIO, DEV_MEM_SZ, 1); // V, P, SZ, ISDEV
+        mpwait = 0;
 
-    // set_test_pgtbl();
-    load_pgtlb (kernel_pgtbl, user_pgtbl);
+    } else {
+        // maybe swap start code to low addr someday ...
+        while(*(int*)V2P(&mpwait))
+            ;
 
-    // We can now call normal kernel functions at high memory
-    clear_bss ();
+        load_pgtlb (kernel_pgtbl, user_pgtbl);
+    }
 }

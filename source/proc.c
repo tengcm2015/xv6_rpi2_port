@@ -30,7 +30,7 @@ struct {
 } ptable;
 
 static struct proc *initproc;
-struct proc *curr_proc;
+// struct proc *curr_proc;
 
 int nextpid = 1;
 extern void forkret(void);

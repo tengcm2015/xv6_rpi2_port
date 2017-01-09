@@ -21,7 +21,6 @@ extern void* end; // first address after kernel loaded from ELF file
 extern FBI fbinfo;
 
 struct cpu	cpus[NCPU];
-struct cpu	*curr_cpu;
 
 void OkLoop()
 {
@@ -45,12 +44,43 @@ void NotOkLoop()
     }
 }
 
-extern void test_main(void);
-void kmain (void)
+void mpmain(int cpunum)
 {
-    // uint vectbl;
+    static int mpwait = 1;
 
-    curr_cpu = &cpus[0];
+    if (cpunum == 0) {
+        mpwait = 0;
+        return;
+    }
+
+    while (mpwait)
+        ;
+
+    // under development
+    if (cpunum != 3) {
+        for(;;)
+            ;
+    }
+
+    cprintf("cpu%d: starting\n", cpunum);
+
+    stack_init();
+    enable_interrupts();
+
+    timer3init();
+
+    scheduler();
+
+    NotOkLoop();
+}
+
+extern void test_main(void);
+void kmain (int cpunum)
+{
+    // curr_cpu = &cpus[0];
+    if (cpunum) {
+        mpmain(cpunum);
+    }
 
     uartinit(BAUDRATE);
 
@@ -58,26 +88,15 @@ void kmain (void)
 
     // led_flash(500000, 1); // debug
 
-    // mailboxinit();
-    // create_request(mailbuffer, MPI_TAG_GET_ARM_MEMORY, 8, 0, 0);
-    // writemailbox((uint *)mailbuffer, 8);
-    // readmailbox(8);
-    // if(mailbuffer[1] != 0x80000000)
-    //     cprintf("new error readmailbox\n");
-    // else
-    //     cprintf("ARM memory is %x %x\n",
-    //         mailbuffer[MB_HEADER_LENGTH + TAG_HEADER_LENGTH],
-    //         mailbuffer[MB_HEADER_LENGTH + TAG_HEADER_LENGTH + 1]
-    //     );
+    /* reference:
+        https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface
+     */
     RPI_PropertyInit();
     RPI_PropertyAddTag( TAG_GET_ARM_MEMORY );
     RPI_PropertyProcess();
     rpi_mailbox_property_t* mp;
     mp = RPI_PropertyGet( TAG_GET_ARM_MEMORY );
 
-    /* reference:
-        https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface
-     */
     if ( mp ) {
         cprintf( "MEMORY:\r\n" );
         cprintf( "Base address: 0x%x\r\n", mp->data.buffer_32[0] );
@@ -86,13 +105,7 @@ void kmain (void)
         cprintf( "Mailbox error\r\n" );
     }
 
-    // interrrupt vector table is in the middle of first 1MB. We use the left
-    // over for page tables
-    // vectbl = P2V_WO ((HVECTORS & PDE_MASK) + PA_START);
-
     init_vmm ();
-    // kpt_freerange (align_up(&end, PT_SZ), vectbl);
-    // kpt_freerange (vectbl + PT_SZ, P2V_WO(INIT_KERNMAP));
     kpt_freerange (align_up(&end, PT_SZ), P2V_WO(INIT_KERNMAP));
     paging_init (INIT_KERNMAP, PA_STOP);
     // cprintf("it is ok after paging_init\n");
@@ -119,6 +132,7 @@ void kmain (void)
     // cprintf("it is ok after ideinit\n");
     timer3init();
     // cprintf("it is ok after timer3init\n");
+    mpmain(0);
 
     sti ();
     userinit();

@@ -39,8 +39,20 @@ SECTIONS {
         /*define a stack for the entry*/
         . = ALIGN(0x1000);
         . += ENTRY_SVC_STACK_SIZE;
-
         PROVIDE (svc_stktop = .);
+
+        /*lets get 4 of them...*/
+        . = ALIGN(0x1000);
+        . += ENTRY_SVC_STACK_SIZE;
+        PROVIDE (svc_stktop_1 = .);
+
+        . = ALIGN(0x1000);
+        . += ENTRY_SVC_STACK_SIZE;
+        PROVIDE (svc_stktop_2 = .);
+
+        . = ALIGN(0x1000);
+        . += ENTRY_SVC_STACK_SIZE;
+        PROVIDE (svc_stktop_3 = .);
 
         /* define the kernel page table, must be 16K=0x4000 and 16K-aligned*/
         . = ALIGN(0x4000);

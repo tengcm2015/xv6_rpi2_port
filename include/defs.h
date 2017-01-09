@@ -195,6 +195,7 @@ extern uint     ticks;
 
 // trap.c
 void            trap_init(void);
+void            stack_init(void);
 void            dump_trapframe (struct trapframe *tf);
 
 // trap_asm.S

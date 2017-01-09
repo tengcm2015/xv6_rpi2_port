@@ -77,9 +77,9 @@ $(TARGET) : $(BUILD)output.elf
 
 # Rule to make the elf file.
 # LIBOPTS := -L"/opt/local/arm-none-eabi/lib/" -lc
+LIBOPTS := -L. $(patsubst %,-l %,$(LIBRARIES))
 # this is for undefined reference to `__aeabi_idiv' error
-LIBOPTS := -L"/opt/local/lib/gcc/arm-none-eabi/5.1.0/" -lgcc
-LIBOPTS += -L. $(patsubst %,-l %,$(LIBRARIES))
+LIBOPTS += -L"/opt/local/lib/gcc/arm-none-eabi/5.1.0/" -lgcc
 
 $(BUILD)output.elf : $(LINKER) $(OBJECTS) $(BINARIES)
 	$(ARMGNU)-ld -T $(LINKER) -o $(BUILD)output.elf -Map $(MAP) \

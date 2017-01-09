@@ -4,7 +4,7 @@
 // Segments in proc->gdt.
 #define NSEGS     7
 
-// Per-CPU state, now we only support one CPU
+// Per-CPU state
 struct cpu {
     uchar           id;             // index into cpus[] below
     struct context*   scheduler;    // swtch() here to enter scheduler
@@ -14,16 +14,20 @@ struct cpu {
     int             intena;         // Were interrupts enabled before pushcli?
 
     // Cpu-local storage variables; see below
-    struct cpu*     cpu;
+    // struct cpu*     cpu;
     struct proc*    proc;           // The currently-running process.
 };
 
 extern struct cpu cpus[NCPU];
 extern int ncpu;
 
+// there are better solution for this probably ...
+#define curr_cpu    (&cpus[get_cpunum()])
+#define curr_proc   cpus[get_cpunum()].proc
 
-extern struct cpu* curr_cpu;
-extern struct proc* curr_proc;
+// extern struct cpu* curr_cpu;
+// extern struct proc* curr_proc;
+
 
 //PAGEBREAK: 17
 // Saved registers for kernel context switches. The context switcher
