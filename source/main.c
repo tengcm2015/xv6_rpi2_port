@@ -67,8 +67,6 @@ void mpmain(int cpunum)
     stack_init();
     enable_interrupts();
 
-    timer3init();
-
     scheduler();
 
     NotOkLoop();
