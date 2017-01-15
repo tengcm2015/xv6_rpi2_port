@@ -94,3 +94,19 @@ int sys_uptime(void)
 
     return xticks;
 }
+
+int sys_cpuutil(void) {
+    int cpunum, mode, enabled;
+
+    if(argint(0, &cpunum) < 0) {
+        return -1;
+    }
+    if(argint(1, &mode) < 0) {
+        return -1;
+    }
+    if(argint(2, &enabled) < 0) {
+        return -1;
+    }
+
+    return cpuutil(cpunum, mode, enabled);
+}

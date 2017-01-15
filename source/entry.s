@@ -37,21 +37,21 @@ entry:
     @ This does not need to be done from a cold reset
     @==================================================================
 
-    @MRC     p15, 0, r0, c1, c0, 0       @ Read CP15 System Control register
-    @BIC     r0, r0, #(0x1 << 12)        @ Clear I bit 12 to disable I Cache
-    @BIC     r0, r0, #(0x1 <<  2)        @ Clear C bit  2 to disable D Cache
-    @BIC     r0, r0, #0x1                @ Clear M bit  0 to disable MMU
-    @BIC     r0, r0, #(0x1 << 11)        @ Clear Z bit 11 to disable branch prediction
-    @MCR     p15, 0, r0, c1, c0, 0       @ Write value back to CP15 System Control register
+    MRC     p15, 0, r0, c1, c0, 0       @ Read CP15 System Control register
+    BIC     r0, r0, #(0x1 << 12)        @ Clear I bit 12 to disable I Cache
+    BIC     r0, r0, #(0x1 <<  2)        @ Clear C bit  2 to disable D Cache
+    BIC     r0, r0, #0x1                @ Clear M bit  0 to disable MMU
+    BIC     r0, r0, #(0x1 << 11)        @ Clear Z bit 11 to disable branch prediction
+    MCR     p15, 0, r0, c1, c0, 0       @ Write value back to CP15 System Control register
 
     @===================================================================
     @ ACTLR.SMP Enables coherent requests to the processor.
     @ You must ensure this bit is set to 1 before the caches and MMU are enabled,
     @ or any cache and TLB maintenance operations are performed.
     @===================================================================
-    MRC     p15, 0, r0, c1, c0, 1   @ Read CP15 ACTLR
-    ORR     r0, r0, #(1 << 6)       @ set ACTLR.SMP bit
-    MCR     p15, 0, r0, c1, c0, 1   @ Write CP15 ACTLR
+    @MRC     p15, 0, r0, c1, c0, 1   @ Read CP15 ACTLR
+    @ORR     r0, r0, #(1 << 6)       @ set ACTLR.SMP bit
+    @MCR     p15, 0, r0, c1, c0, 1   @ Write CP15 ACTLR
 
     @===================================================================
     @ Initialize Supervisor Mode

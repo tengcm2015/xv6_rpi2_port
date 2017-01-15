@@ -171,7 +171,9 @@ void switchuvm (struct proc *p)
         panic("switchuvm: no pgdir");
     }
 
-    val = (uint) V2P(p->pgdir) | 0x00;
+    // val = (uint) V2P(p->pgdir) | 0x00;
+    val = (uint) V2P(p->pgdir) | 0x02 | 0x08 | 0x40;
+    // cprintf("switchuvm: %x\n", p->pgdir);
 
     asm("MCR p15, 0, %[v], c2, c0, 0": :[v]"r" (val):);
     flush_tlb();
@@ -230,6 +232,8 @@ int loaduvm (pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 // newsz, which need not be page aligned.  Returns new size or 0 on error.
 int allocuvm (pde_t *pgdir, uint oldsz, uint newsz)
 {
+    // cprintf("allocuvm(%x, %x, %x)\n", pgdir, oldsz, newsz);
+
     char *mem;
     uint a;
 
@@ -253,8 +257,10 @@ int allocuvm (pde_t *pgdir, uint oldsz, uint newsz)
         }
 
         memset(mem, 0, PTE_SZ);
+        // cprintf("mappages(%x, %x, %x)\n", pgdir, (char*) a, v2p(mem));
         mappages(pgdir, (char*) a, PTE_SZ, v2p(mem), AP_KU);
     }
+    // cprintf("allocuvm: done!\n");
 
     return newsz;
 }

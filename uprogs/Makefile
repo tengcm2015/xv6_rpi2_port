@@ -44,6 +44,7 @@ ULIB = ulib.o usys.o printf.o umalloc.o
 
 UPROGS=\
 	_cat\
+	_cpu\
 	_echo\
 	_forktest\
 	_grep\
@@ -52,8 +53,10 @@ UPROGS=\
 	_ln\
 	_ls\
 	_mkdir\
+	_print_a_lot\
 	_rm\
 	_sh\
+	_smptest\
 	_stressfs\
 	_usertests\
 	_wc\

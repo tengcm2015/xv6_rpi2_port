@@ -115,6 +115,8 @@ extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
 
+extern int sys_cpuutil(void);
+
 static int (*syscalls[])(void) = {
         [SYS_fork]    sys_fork,
         [SYS_exit]    sys_exit,
@@ -137,6 +139,7 @@ static int (*syscalls[])(void) = {
         [SYS_link]    sys_link,
         [SYS_mkdir]   sys_mkdir,
         [SYS_close]   sys_close,
+        [SYS_cpuutil] sys_cpuutil,
 };
 
 void syscall(void)
@@ -146,7 +149,7 @@ void syscall(void)
 
     num = curr_proc->tf->r0;
 
-    //cprintf ("syscall(%d) from %s(%d)\n", num, curr_proc->name, curr_proc->pid);
+    // cprintf ("syscall(%d) from %s(%d)\n", num, curr_proc->name, curr_proc->pid);
 
     if((num > 0) && (num <= NELEM(syscalls)) && syscalls[num]) {
         ret = syscalls[num]();

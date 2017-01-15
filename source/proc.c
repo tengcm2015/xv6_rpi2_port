@@ -35,6 +35,7 @@ static struct proc *initproc;
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
+// extern void trapret_debug(void);
 
 static void wakeup1(void *chan);
 
@@ -128,6 +129,7 @@ void userinit(void)
     }
 
     inituvm(p->pgdir, _binary_initcode_start, initcode_size);
+    // cprintf("userinit: initcodesize: %d\n", initcode_size);
 
     p->sz = PTE_SZ;
 
@@ -147,6 +149,11 @@ void userinit(void)
     p->cwd = namei("/");
 
     p->state = RUNNABLE;
+
+    // cprintf("init context:\n");
+    // dump_context(p->context);
+    // cprintf("init trapframe:\n");
+    // dump_trapframe(p->tf);
 }
 
 // Grow current process's memory by n bytes.
@@ -324,6 +331,10 @@ void scheduler(void)
     struct proc *p;
 
     for(;;){
+        while (!curr_cpu->enabled) {
+            /* not enabled loop */
+        }
+
         // Enable interrupts on this processor.
         sti();
 
@@ -343,6 +354,9 @@ void scheduler(void)
 
             p->state = RUNNING;
 
+            // cprintf("cpu%d: switch context\n", get_cpunum());
+            // cprintf("switch to context:\n");
+            // dump_context(curr_proc->context);
             swtch(&curr_cpu->scheduler, curr_proc->context);
             // Process is done running for now.
             // It should have changed its p->state before coming back.
@@ -407,6 +421,13 @@ void forkret(void)
         first = 0;
         initlog();
     }
+
+
+    // asm("ADD sp, sp, #4");
+    // cprintf("forkret: stackdump\n");
+    // dump_trapframe(get_sp());
+    // cprintf("forkret: tf\n");
+
 
     // Return to "caller", actually trapret (see allocproc).
 }

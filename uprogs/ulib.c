@@ -7,7 +7,7 @@ char*
 strcpy(char *s, char *t)
 {
     char *os;
-    
+
     os = s;
     while((*s++ = *t++) != 0)
         ;
@@ -26,7 +26,7 @@ uint
 strlen(char *s)
 {
     int n;
-    
+
     for(n = 0; s[n]; n++)
         ;
     return n;
@@ -80,7 +80,7 @@ gets(char *buf, int max)
 {
     int i, cc;
     char c;
-    
+
     for(i=0; i+1 < max; ){
         cc = read(0, &c, 1);
         if(cc < 1)
@@ -98,7 +98,7 @@ stat(char *n, struct stat *st)
 {
     int fd;
     int r;
-    
+
     fd = open(n, O_RDONLY);
     if(fd < 0)
         return -1;
@@ -111,7 +111,7 @@ int
 atoi(const char *s)
 {
     int n;
-    
+
     n = 0;
     while('0' <= *s && *s <= '9')
         n = n*10 + *s++ - '0';
@@ -122,10 +122,22 @@ void*
 memmove(void *vdst, void *vsrc, int n)
 {
     char *dst, *src;
-    
+
     dst = vdst;
     src = vsrc;
     while(n-- > 0)
         *dst++ = *src++;
     return vdst;
+}
+
+int
+setcore(int cpunum, int enabled)
+{
+    return cpuutil(cpunum, 1, enabled);
+}
+
+int
+getcore(int cpunum)
+{
+    return cpuutil(cpunum, 0, 0);
 }

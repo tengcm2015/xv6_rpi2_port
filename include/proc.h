@@ -7,11 +7,13 @@
 // Per-CPU state
 struct cpu {
     uchar           id;             // index into cpus[] below
-    struct context*   scheduler;    // swtch() here to enter scheduler
+    struct context* scheduler;      // swtch() here to enter scheduler
     volatile uint   started;        // Has the CPU started?
 
     int             ncli;           // Depth of pushcli nesting.
     int             intena;         // Were interrupts enabled before pushcli?
+
+    int             enabled;        // disabled core will be held loop in scheduler
 
     // Cpu-local storage variables; see below
     // struct cpu*     cpu;

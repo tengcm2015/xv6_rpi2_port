@@ -33,7 +33,7 @@ void*           get_fp(void);
 void*           get_sp(void);
 uint            get_cpunum(void);
 void            enable_interrupts(void);
-// void            invalidate_dcache_all(void);
+void            invalidate_dcache_all(void);
 void            clean_inval_dcache_all(void);
 
 // bio.c
@@ -66,7 +66,7 @@ void            drawcharacter(uint8, uint, uint);
 void            gpuputc(uint);
 
 
-// ide.c
+// memide.c
 void            ideinit(void);
 void            ideintr(void);
 void            iderw(struct buf*);
@@ -116,6 +116,9 @@ void            log_write(struct buf*);
 void            begin_trans();
 void            commit_trans();
 
+// main.c
+int             cpuutil(int, int, int);
+
 // pipe.c
 int             pipealloc(struct file**, struct file**);
 void            pipeclose(struct pipe*, int);
@@ -144,16 +147,7 @@ void            procdump(void);
 // swtch.S
 void            swtch(struct context**, struct context*);
 
-// syscall.c
-int             argint(int, int*);
-int             argptr(int, char**, int);
-int             argstr(int, char**);
-int             fetchint(uint, int*);
-int             fetchstr(uint, char**);
-void            syscall(void);
-
-void            kvmalloc(void);
-
+// keyboard.S
 int             UsbInitialise(void);
 void            KeyboardUpdate(void);
 char            KeyboardGetChar(void);

@@ -44,6 +44,8 @@ void NotOkLoop()
     }
 }
 
+extern void test_main(void);
+
 void mpmain(int cpunum)
 {
     static int mpwait = 1;
@@ -56,29 +58,35 @@ void mpmain(int cpunum)
     while (mpwait)
         ;
 
-    // under development
-    if (cpunum != 3) {
-        for(;;)
-            ;
-    }
+    // make sure they are off at first
+    cpus[cpunum].enabled = 0;
 
-    cprintf("cpu%d: starting\n", cpunum);
+    // under development
+    delay(50 * cpunum);
+    // for(;;)
+    //     ;
+
+    // cprintf("cpu%d: starting\n", cpunum);
 
     stack_init();
     enable_interrupts();
+
+    // test_main();
 
     scheduler();
 
     NotOkLoop();
 }
 
-extern void test_main(void);
 void kmain (int cpunum)
 {
     // curr_cpu = &cpus[0];
     if (cpunum) {
         mpmain(cpunum);
     }
+
+    // main core should be on
+    cpus[0].enabled = 1;
 
     uartinit(BAUDRATE);
 
@@ -138,4 +146,51 @@ void kmain (int cpunum)
     scheduler();
 
     NotOkLoop();
+}
+
+int cpuutil(int cpunum, int mode, int enabled)
+{
+    int i, at_least_one_cpu_is_on;
+
+    switch(mode) {
+    case 0: // get enabled
+        return cpus[cpunum].enabled;
+
+    case 1: // set enabled
+        if (cpunum < 0 || cpunum >= NCPU) {
+            cprintf("setcore: cpu %d not available.\n", cpunum);
+            return -1;
+        }
+
+        if (enabled == 0) {
+            if (cpunum == get_cpunum()) {
+                cprintf("setcore: cpu %d is running this process.\n", cpunum);
+                cprintf("         It will turned off after this process.\n");
+            }
+
+            for(i = 0, at_least_one_cpu_is_on = 0; i < NCPU; i++) {
+                if (i != cpunum) {
+                    at_least_one_cpu_is_on += cpus[NCPU].enabled;
+                }
+            }
+
+            if (!at_least_one_cpu_is_on) {
+                cprintf("setcore: cpu %d is the last running core!\n", cpunum);
+                return -1;
+            }
+        }
+
+        if (enabled != 0 && enabled != 1) {
+            cprintf("setcore: invalid argument %d\n", cpunum);
+            return -1;
+        }
+
+        cpus[cpunum].enabled = enabled;
+        cprintf("setcore: set core[%d].enabled to %d\n", cpunum, enabled);
+
+        return 0;
+    default:
+        cprintf("setcore: invalid mode %d\n", cpunum);
+        return -1;
+    }
 }

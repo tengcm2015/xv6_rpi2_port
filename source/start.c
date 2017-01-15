@@ -6,9 +6,9 @@
 
 // this code mainly runs in low address,
 // and since we linked whole code at high address,
-// we cannot use global variables here because GVs
-// use absolute reference in asm
-
+// global variables and static variables use absolute reference in asm
+// so we need to convert them if we want use them...
+#define get_global_no_map(type, x) (*(type*)V2P(&x))
 // maybe swap start code to low addr someday ...
 
 // setup the boot page table: dev_mem whether it is device memory
@@ -50,12 +50,15 @@ void set_bootpgtbl (uint32 virt, uint32 phy, uint len, int dev_mem )
 
 static void _flush_all (void)
 {
-    uint val = 0;
+    // uint val = 0;
 
     // flush all TLB
-    asm("MCR p15, 0, %[r], c8, c7, 0" : :[r]"r" (val):);
+    // asm("MCR p15, 0, %[r], c8, c7, 0" : :[r]"r" (val):);
+    invalidate_tlb();
 
     // invalid entire data and instruction cache
+    invalidate_dcache_all();
+    invalidate_icache_all();
     // asm ("MCR p15,0,%[r],c7,c5,0": :[r]"r" (val):);
     // asm ("MCR p15,0,%[r],c7,c6,0": :[r]"r" (val):);
 }
@@ -65,9 +68,9 @@ void load_pgtlb (uint32* kern_pgtbl, uint32* usr_pgtbl)
     uint    val;
     // we need to check the cache/tlb etc., but let's skip it for now
     // set SMP bit in ACTLR
-    // asm("MRC p15, 0, %[r], c1, c0, 1": [r]"=r" (val)::);
-    // val |= 1 << 6;
-    // asm("MCR p15, 0, %[v], c1, c0, 1": :[v]"r" (val):);
+    asm("MRC p15, 0, %[r], c1, c0, 1": [r]"=r" (val)::);
+    val |= 1 << 6;
+    asm("MCR p15, 0, %[v], c1, c0, 1": :[v]"r" (val):);
 
     // set domain access control: all domain will be checked for permission
     val = 0x55555555;
@@ -78,21 +81,21 @@ void load_pgtlb (uint32* kern_pgtbl, uint32* usr_pgtbl)
     val = 32 - UADDR_BITS;
     asm("MCR p15, 0, %[v], c2, c0, 2": :[v]"r" (val):);
 
-    // set the kernel page table
+    // set the kernel page table (with Multiprocessing Extensions)
     //      0x08 RGN=b01  (outer cacheable write-back cached, write allocate)
-    //      S=0      (translation table walk to non-shared memory)
+    //      0x02 S=1      (translation table walk to shared memory)
     //      0x40 IRGN=b01 (inner cacheability for the translation table walk
     //                      is Write-back Write-allocate)
-    // val = (uint)kernel_pgtbl | 0x08 | 0x40;
-    val = (uint)kern_pgtbl;
+    val = (uint)kern_pgtbl | 0x02 | 0x08 | 0x40;
+    // val = (uint)kern_pgtbl | 0x0;
     asm("MCR p15, 0, %[v], c2, c0, 1": :[v]"r" (val):);
 
     // set the user page table
-    // val = (uint)user_pgtbl | 0x08 | 0x40;
-    val = (uint)usr_pgtbl;
+    val = (uint)usr_pgtbl | 0x02 | 0x08 | 0x40;
+    // val = (uint)usr_pgtbl | 0x0;
     asm("MCR p15, 0, %[v], c2, c0, 0": :[v]"r" (val):);
 
-    asm("ISB" ::: "memory");
+    _flush_all();
 
     // ok, enable paging using read/modify/write
     asm("MRC p15, 0, %[r], c1, c0, 0": [r]"=r" (val)::);
@@ -142,15 +145,18 @@ void start (int cpunum)
     if (cpunum == 0) {
         init_pgtbl();
 
+        // let mpcores enable caches right now
+        // because caches needs to be on for every core
+        // before any cache maintainence to keep consistency
+        get_global_no_map(int, mpwait) = 0;
+
         load_pgtlb (kernel_pgtbl, user_pgtbl);
         // We can now call normal kernel functions at high memory
         clear_bss ();
 
-        mpwait = 0;
-
     } else {
         // maybe swap start code to low addr someday ...
-        while(*(int*)V2P(&mpwait))
+        while(get_global_no_map(int, mpwait))
             ;
 
         load_pgtlb (kernel_pgtbl, user_pgtbl);

@@ -29,6 +29,10 @@ trap_swi:
     MOV     r0, r13             // copy r13_svc to r0
     BL      swi_handler         // branch to the isr_swi
 
+@.global trapret_debug
+@trapret_debug:
+@    MOV     r0, sp             // copy sp to r0
+@    BL      dump_trapframe
     @ restore states
 trapret:
     LDMFD   r13, {sp, lr}^      // restore user mode sp and lr
